@@ -10,16 +10,18 @@
 @namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
 
 /* ──────────────────────────────────────────────
-   § FONT — Outfit
+   § FONT — JetBrains Mono
    ────────────────────────────────────────────── */
-@import url("https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&display=swap");
 
 * {
-  font-family: "Outfit", ui-sans-serif, system-ui, sans-serif !important;
+  font-family: "JetBrains Mono", ui-monospace, monospace !important;
 }
 
 /* ──────────────────────────────────────────────
    § 0  DESIGN TOKENS
+   Zen sidebar width vars are overridden here so
+   the splitter can drag freely with no CSS floor.
    ────────────────────────────────────────────── */
 :root {
   --zc-bg-0:        #0b0b0d;
@@ -42,11 +44,16 @@
   --zc-r-sm:  6px;
   --zc-r-md:  10px;
   --zc-r-lg:  14px;
-  --zc-r-xl:  18px;
 
   --zc-shadow-sm:  0 1px 4px rgba(0,0,0,0.40);
   --zc-shadow-md:  0 4px 16px rgba(0,0,0,0.55);
   --zc-shadow-lg:  0 8px 32px rgba(0,0,0,0.65);
+
+  /* Override Zen's own minimum sidebar width tokens */
+  --zen-sidebar-min-width:    0px !important;
+  --zen-sidebar-width:        unset !important;
+  --zen-tabs-width:           unset !important;
+  --zen-appcontent-min-width: 0px !important;
 }
 
 /* ──────────────────────────────────────────────
@@ -119,18 +126,16 @@
 
 /* ──────────────────────────────────────────────
    § 3  TOOLBAR BUTTONS
-   -moz-appearance: none strips native theming so
-   background-color actually renders and transitions
-   fire. Without this, the browser ignores everything.
+   Back/forward excluded — Zen handles those.
+   -moz-appearance: none is required or background
+   transitions are silently ignored by XUL.
    ────────────────────────────────────────────── */
-.toolbarbutton-1,
-#back-button,
-#forward-button,
 #reload-button,
 #stop-button,
 #home-button,
 #downloads-button,
-#unified-extensions-button {
+#unified-extensions-button,
+.toolbarbutton-1:not(#back-button):not(#forward-button) {
   -moz-appearance: none !important;
   border-radius: var(--zc-r-sm) !important;
   border: none !important;
@@ -139,47 +144,37 @@
   transition: background-color 150ms ease !important;
 }
 
-.toolbarbutton-1:not([disabled]):hover,
-#back-button:not([disabled]):hover,
-#forward-button:not([disabled]):hover,
 #reload-button:not([disabled]):hover,
 #stop-button:not([disabled]):hover,
-#home-button:not([disabled]):hover {
+#home-button:not([disabled]):hover,
+.toolbarbutton-1:not(#back-button):not(#forward-button):not([disabled]):hover {
   background-color: rgba(255,255,255,0.08) !important;
 }
 
-.toolbarbutton-1:not([disabled]):active,
-#back-button:not([disabled]):active,
-#forward-button:not([disabled]):active,
-#reload-button:not([disabled]):active {
+#reload-button:not([disabled]):active,
+.toolbarbutton-1:not(#back-button):not(#forward-button):not([disabled]):active {
   background-color: rgba(255,255,255,0.13) !important;
 }
 
-/* Icon fades in on hover */
-.toolbarbutton-1 .toolbarbutton-icon,
-#back-button .toolbarbutton-icon,
-#forward-button .toolbarbutton-icon,
+/* Icon opacity — fades in on hover */
 #reload-button .toolbarbutton-icon,
-#home-button .toolbarbutton-icon {
+#home-button .toolbarbutton-icon,
+.toolbarbutton-1:not(#back-button):not(#forward-button) .toolbarbutton-icon {
   opacity: 0.5;
   transition: opacity 150ms ease !important;
 }
 
-.toolbarbutton-1:hover .toolbarbutton-icon,
-#back-button:hover .toolbarbutton-icon,
-#forward-button:hover .toolbarbutton-icon,
 #reload-button:hover .toolbarbutton-icon,
-#home-button:hover .toolbarbutton-icon {
+#home-button:hover .toolbarbutton-icon,
+.toolbarbutton-1:not(#back-button):not(#forward-button):hover .toolbarbutton-icon {
   opacity: 1 !important;
 }
 
-#back-button[disabled="true"],
-#forward-button[disabled="true"] {
-  opacity: 0.25 !important;
-}
-
 /* ──────────────────────────────────────────────
-   § 4  ZEN SIDEBAR
+   § 4  ZEN SIDEBAR CONTAINERS
+   Only background/border — no button or tab
+   styling, no width/min-width overrides here.
+   Zen owns all sizing on these elements.
    ────────────────────────────────────────────── */
 #zen-sidebar-icons-wrapper,
 #zen-sidebar-top-buttons,
@@ -188,44 +183,8 @@
   border-right: 1px solid var(--zc-border) !important;
 }
 
-.zen-sidebar-panel-button,
-#zen-sidebar-icons-wrapper toolbarbutton,
-#zen-sidebar-top-buttons toolbarbutton {
-  -moz-appearance: none !important;
-  border-radius: var(--zc-r-md) !important;
-  border: none !important;
-  margin: 2px 4px !important;
-  padding: 7px !important;
-  background-color: transparent !important;
-  transition: background-color 150ms ease !important;
-}
-
-.zen-sidebar-panel-button:hover,
-#zen-sidebar-icons-wrapper toolbarbutton:hover,
-#zen-sidebar-top-buttons toolbarbutton:hover {
-  background-color: rgba(255,255,255,0.08) !important;
-}
-
-.zen-sidebar-panel-button[open="true"],
-.zen-sidebar-panel-button[checked="true"] {
-  background-color: rgba(124,106,245,0.15) !important;
-}
-
-.zen-sidebar-panel-button .toolbarbutton-icon,
-#zen-sidebar-icons-wrapper toolbarbutton .toolbarbutton-icon,
-#zen-sidebar-top-buttons toolbarbutton .toolbarbutton-icon {
-  opacity: 0.5;
-  transition: opacity 150ms ease !important;
-}
-
-.zen-sidebar-panel-button:hover .toolbarbutton-icon,
-#zen-sidebar-icons-wrapper toolbarbutton:hover .toolbarbutton-icon,
-#zen-sidebar-top-buttons toolbarbutton:hover .toolbarbutton-icon {
-  opacity: 1 !important;
-}
-
 /* ──────────────────────────────────────────────
-   § 5  SIDEBAR PANEL
+   § 5  SIDEBAR PANEL (Bookmarks / History)
    ────────────────────────────────────────────── */
 #sidebar-box {
   background: var(--zc-bg-1) !important;
@@ -294,32 +253,7 @@ scrollbar button {
 }
 
 /* ──────────────────────────────────────────────
-   § 8  BOOKMARK TOOLBAR
-   ────────────────────────────────────────────── */
-#PersonalToolbar {
-  background: var(--zc-bg-1) !important;
-  border-bottom: 1px solid var(--zc-border) !important;
-  padding: 3px 8px !important;
-}
-
-toolbarbutton.bookmark-item {
-  -moz-appearance: none !important;
-  border-radius: var(--zc-r-sm) !important;
-  border: none !important;
-  padding: 3px 7px !important;
-  color: var(--zc-text-2) !important;
-  font-size: 12px !important;
-  background-color: transparent !important;
-  transition: background-color 150ms ease, color 150ms ease !important;
-}
-
-toolbarbutton.bookmark-item:hover {
-  background-color: rgba(255,255,255,0.08) !important;
-  color: var(--zc-text-1) !important;
-}
-
-/* ──────────────────────────────────────────────
-   § 9  IDENTITY / PAGE ACTION BUTTONS
+   § 8  IDENTITY / PAGE ACTION BUTTONS
    ────────────────────────────────────────────── */
 #identity-box {
   -moz-appearance: none !important;
@@ -357,7 +291,7 @@ toolbarbutton.bookmark-item:hover {
 }
 
 /* ──────────────────────────────────────────────
-   § 10  DOWNLOAD BADGE
+   § 9  DOWNLOAD BADGE
    ────────────────────────────────────────────── */
 #downloads-button[badge-status] .toolbarbutton-badge {
   background-color: var(--zc-accent) !important;
@@ -369,7 +303,7 @@ toolbarbutton.bookmark-item:hover {
 }
 
 /* ──────────────────────────────────────────────
-   § 11  ZEN SPLIT VIEW DIVIDER
+   § 10  ZEN SPLIT VIEW DIVIDER
    ────────────────────────────────────────────── */
 .zen-split-view-divider {
   background-color: var(--zc-border) !important;
@@ -381,7 +315,7 @@ toolbarbutton.bookmark-item:hover {
 }
 
 /* ──────────────────────────────────────────────
-   § 12  FOCUS RING
+   § 11  FOCUS RING
    ────────────────────────────────────────────── */
 :focus-visible {
   outline: 2px solid var(--zc-accent) !important;
@@ -390,7 +324,7 @@ toolbarbutton.bookmark-item:hover {
 }
 
 /* ──────────────────────────────────────────────
-   § 13  STATUS BAR
+   § 12  STATUS BAR
    ────────────────────────────────────────────── */
 #statuspanel-label {
   background-color: var(--zc-bg-2) !important;
@@ -403,7 +337,7 @@ toolbarbutton.bookmark-item:hover {
 }
 
 /* ──────────────────────────────────────────────
-   § 14  TOOLTIP
+   § 13  TOOLTIP
    ────────────────────────────────────────────── */
 tooltip {
   background-color: var(--zc-bg-2) !important;
@@ -416,7 +350,7 @@ tooltip {
 }
 
 /* ──────────────────────────────────────────────
-   § 15  WINDOW CONTROLS (Linux)
+   § 14  WINDOW CONTROLS (Linux)
    ────────────────────────────────────────────── */
 .titlebar-button {
   border-radius: 50% !important;
@@ -428,7 +362,7 @@ tooltip {
 }
 
 /* ──────────────────────────────────────────────
-   § 16  NOTIFICATION BARS
+   § 15  NOTIFICATION BARS
    ────────────────────────────────────────────── */
 notification {
   background-color: var(--zc-bg-2) !important;
