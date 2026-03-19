@@ -1,7 +1,6 @@
 /* ============================================================
    ZEN BROWSER — userChrome.css
    Theme: Obsidian Glass
-   A premium, minimal dark theme with silky micro-interactions
    ============================================================
    INSTALL: Place in your Zen profile's chrome/ folder.
    Enable toolkit.legacyUserProfileCustomizations.stylesheets
@@ -23,52 +22,31 @@
    § 0  DESIGN TOKENS
    ────────────────────────────────────────────── */
 :root {
-  /* Surface palette */
-  --zc-bg-0:        #0b0b0d;   /* deepest chrome bg          */
-  --zc-bg-1:        #111115;   /* sidebar / toolbar base     */
-  --zc-bg-2:        #18181e;   /* elevated surface           */
-  --zc-bg-3:        #21212a;   /* hover tint                 */
-  --zc-bg-4:        #2a2a36;   /* active / selected          */
+  --zc-bg-0:        #0b0b0d;
+  --zc-bg-1:        #111115;
+  --zc-bg-2:        #18181e;
+  --zc-bg-3:        #21212a;
+  --zc-bg-4:        #2a2a36;
 
-  /* Glass overlay */
-  --zc-glass:       rgba(255,255,255,0.035);
-  --zc-glass-hover: rgba(255,255,255,0.065);
-  --zc-glass-act:   rgba(255,255,255,0.09);
-
-  /* Borders */
   --zc-border:      rgba(255,255,255,0.07);
   --zc-border-hi:   rgba(255,255,255,0.13);
 
-  /* Accent */
-  --zc-accent:      #7c6af5;   /* violet                     */
+  --zc-accent:      #7c6af5;
   --zc-accent-glow: rgba(124,106,245,0.25);
   --zc-accent-dim:  rgba(124,106,245,0.12);
 
-  /* Text */
   --zc-text-1:      rgba(255,255,255,0.90);
   --zc-text-2:      rgba(255,255,255,0.55);
   --zc-text-3:      rgba(255,255,255,0.30);
 
-  /* Radii */
   --zc-r-sm:  6px;
   --zc-r-md:  10px;
   --zc-r-lg:  14px;
   --zc-r-xl:  18px;
 
-  /* Shadows */
   --zc-shadow-sm:  0 1px 4px rgba(0,0,0,0.40);
   --zc-shadow-md:  0 4px 16px rgba(0,0,0,0.55);
   --zc-shadow-lg:  0 8px 32px rgba(0,0,0,0.65);
-
-  /* Motion curves */
-  --zc-ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
-  --zc-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
-  --zc-ease-snappy: cubic-bezier(0.4, 0, 0.2, 1);
-
-  /* Durations */
-  --zc-dur-fast:   120ms;
-  --zc-dur-mid:    200ms;
-  --zc-dur-slow:   320ms;
 }
 
 /* ──────────────────────────────────────────────
@@ -80,18 +58,16 @@
   padding: 0 !important;
 }
 
-/* Remove the default separator line between toolbar and content */
 #navigator-toolbox::after {
   display: none !important;
 }
 
-/* Main browser window */
 #browser {
   background: var(--zc-bg-0) !important;
 }
 
 /* ──────────────────────────────────────────────
-   § 2  NAVIGATION BAR (URL Bar row)
+   § 2  NAVIGATION BAR
    ────────────────────────────────────────────── */
 #nav-bar {
   background: transparent !important;
@@ -100,19 +76,15 @@
   box-shadow: none !important;
 }
 
-/* URL bar container */
 #urlbar {
-  --urlbar-box-bgcolor:         var(--zc-bg-2) !important;
-  --urlbar-box-focus-bgcolor:   var(--zc-bg-3) !important;
-  --urlbar-box-hover-bgcolor:   var(--zc-bg-3) !important;
-  --urlbar-box-active-bgcolor:  var(--zc-bg-4) !important;
+  --urlbar-box-bgcolor:        var(--zc-bg-2) !important;
+  --urlbar-box-focus-bgcolor:  var(--zc-bg-3) !important;
+  --urlbar-box-hover-bgcolor:  var(--zc-bg-3) !important;
+  --urlbar-box-active-bgcolor: var(--zc-bg-4) !important;
   border-radius: var(--zc-r-lg) !important;
   border: 1px solid var(--zc-border) !important;
   box-shadow: var(--zc-shadow-sm) !important;
-  transition:
-    border-color  var(--zc-dur-mid) var(--zc-ease-snappy),
-    box-shadow    var(--zc-dur-mid) var(--zc-ease-snappy),
-    background    var(--zc-dur-mid) var(--zc-ease-snappy) !important;
+  transition: border-color 200ms ease, box-shadow 200ms ease !important;
   overflow: hidden;
 }
 
@@ -135,20 +107,21 @@
   border: none !important;
 }
 
-/* URL input text */
 #urlbar-input {
   color: var(--zc-text-1) !important;
   font-size: 13px !important;
   letter-spacing: 0.01em !important;
 }
 
-/* Dimmed protocol prefix (http/https) */
 .urlbar-scheme {
   color: var(--zc-text-3) !important;
 }
 
 /* ──────────────────────────────────────────────
-   § 3  TOOLBAR BUTTONS (Back, Forward, Reload…)
+   § 3  TOOLBAR BUTTONS
+   -moz-appearance: none strips native theming so
+   background-color actually renders and transitions
+   fire. Without this, the browser ignores everything.
    ────────────────────────────────────────────── */
 .toolbarbutton-1,
 #back-button,
@@ -158,35 +131,38 @@
 #home-button,
 #downloads-button,
 #unified-extensions-button {
+  -moz-appearance: none !important;
   border-radius: var(--zc-r-sm) !important;
+  border: none !important;
   padding: 5px !important;
-  transition: background 120ms ease !important;
+  background-color: transparent !important;
+  transition: background-color 150ms ease !important;
 }
 
-.toolbarbutton-1:hover,
-#back-button:hover,
-#forward-button:hover,
-#reload-button:hover,
-#stop-button:hover,
-#home-button:hover {
-  background: rgba(255,255,255,0.065) !important;
+.toolbarbutton-1:not([disabled]):hover,
+#back-button:not([disabled]):hover,
+#forward-button:not([disabled]):hover,
+#reload-button:not([disabled]):hover,
+#stop-button:not([disabled]):hover,
+#home-button:not([disabled]):hover {
+  background-color: rgba(255,255,255,0.08) !important;
 }
 
-.toolbarbutton-1:active,
-#back-button:active,
-#forward-button:active,
-#reload-button:active {
-  background: rgba(255,255,255,0.09) !important;
+.toolbarbutton-1:not([disabled]):active,
+#back-button:not([disabled]):active,
+#forward-button:not([disabled]):active,
+#reload-button:not([disabled]):active {
+  background-color: rgba(255,255,255,0.13) !important;
 }
 
-/* Opacity on the icon — most reliable animatable property in XUL */
+/* Icon fades in on hover */
 .toolbarbutton-1 .toolbarbutton-icon,
 #back-button .toolbarbutton-icon,
 #forward-button .toolbarbutton-icon,
 #reload-button .toolbarbutton-icon,
 #home-button .toolbarbutton-icon {
-  opacity: 0.55;
-  transition: opacity 120ms ease !important;
+  opacity: 0.5;
+  transition: opacity 150ms ease !important;
 }
 
 .toolbarbutton-1:hover .toolbarbutton-icon,
@@ -197,168 +173,49 @@
   opacity: 1 !important;
 }
 
-/* Disabled state */
 #back-button[disabled="true"],
 #forward-button[disabled="true"] {
   opacity: 0.25 !important;
 }
 
 /* ──────────────────────────────────────────────
-   § 4  TAB BAR (Horizontal — fallback / compact)
-   ────────────────────────────────────────────── */
-#TabsToolbar {
-  background: var(--zc-bg-1) !important;
-  border-bottom: 1px solid var(--zc-border) !important;
-}
-
-/* New-tab button */
-#tabs-newtab-button,
-.tabs-newtab-button {
-  border-radius: var(--zc-r-sm) !important;
-  opacity: 0.55;
-  transition:
-    opacity    var(--zc-dur-fast) var(--zc-ease-snappy),
-    background var(--zc-dur-fast) var(--zc-ease-snappy) !important;
-}
-
-#tabs-newtab-button:hover,
-.tabs-newtab-button:hover {
-  opacity: 1 !important;
-  background: var(--zc-glass-hover) !important;
-}
-
-/* Individual tab — cosmetic only, no sizing */
-.tabbrowser-tab {
-  border-radius: var(--zc-r-md) !important;
-}
-
-.tab-content {
-  border-radius: var(--zc-r-md) !important;
-  transition: background 200ms ease, box-shadow 200ms ease !important;
-}
-
-/* Idle tab */
-.tabbrowser-tab:not([selected]):not([multiselected]) .tab-content {
-  background: transparent !important;
-}
-
-/* Tab hover */
-.tabbrowser-tab:not([selected]):hover .tab-content {
-  background: rgba(255,255,255,0.065) !important;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.40) !important;
-}
-
-/* Active / selected tab */
-.tabbrowser-tab[selected="true"] .tab-content {
-  background: #2a2a36 !important;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.13), 0 1px 4px rgba(0,0,0,0.40) !important;
-}
-
-/* Active tab accent bar */
-.tabbrowser-tab[selected="true"] .tab-content::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 20%;
-  right: 20%;
-  height: 2px;
-  background: linear-gradient(90deg, transparent, #7c6af5, transparent);
-  border-radius: 0 0 2px 2px;
-  opacity: 0.85;
-}
-
-/* Tab label */
-.tab-label {
-  color: rgba(255,255,255,0.55) !important;
-  font-size: 12.5px !important;
-  font-weight: 450 !important;
-  letter-spacing: 0.01em !important;
-  transition: color 120ms ease !important;
-}
-
-.tabbrowser-tab:hover .tab-label,
-.tabbrowser-tab[selected="true"] .tab-label {
-  color: rgba(255,255,255,0.90) !important;
-}
-
-/* Favicon */
-.tab-icon-image {
-  border-radius: 3px !important;
-  opacity: 0.75;
-  transition: opacity 120ms ease !important;
-}
-
-.tabbrowser-tab:hover .tab-icon-image,
-.tabbrowser-tab[selected="true"] .tab-icon-image {
-  opacity: 1 !important;
-}
-
-/* Close button */
-.tab-close-button {
-  border-radius: var(--zc-r-sm) !important;
-  opacity: 0 !important;
-  transition: opacity 120ms ease, background 120ms ease !important;
-}
-
-.tabbrowser-tab:hover .tab-close-button,
-.tabbrowser-tab[selected="true"] .tab-close-button {
-  opacity: 0.55 !important;
-}
-
-.tab-close-button:hover {
-  background: rgba(255,80,80,0.18) !important;
-  opacity: 1 !important;
-}
-
-.tab-close-button:active {
-  background: rgba(255,80,80,0.30) !important;
-}
-
-/* Loading spinner */
-.tab-throbber {
-  opacity: 0.55 !important;
-}
-
-/* Tab overflow fade */
-.tabbrowser-arrowscrollbox-overflow-start-indicator,
-.tabbrowser-arrowscrollbox-overflow-end-indicator {
-  background: linear-gradient(to right, #111115, transparent) !important;
-}
-
-/* ──────────────────────────────────────────────
-   § 5  ZEN SIDEBAR (Vertical nav panel)
+   § 4  ZEN SIDEBAR
    ────────────────────────────────────────────── */
 #zen-sidebar-icons-wrapper,
 #zen-sidebar-top-buttons,
-.zen-sidebar-panel-button,
 #zen-appcontent-navbar {
   background: var(--zc-bg-1) !important;
   border-right: 1px solid var(--zc-border) !important;
 }
 
-/* Sidebar icon buttons */
 .zen-sidebar-panel-button,
 #zen-sidebar-icons-wrapper toolbarbutton,
 #zen-sidebar-top-buttons toolbarbutton {
+  -moz-appearance: none !important;
   border-radius: var(--zc-r-md) !important;
+  border: none !important;
   margin: 2px 4px !important;
   padding: 7px !important;
-  background: transparent !important;
-  transition: background 120ms ease !important;
+  background-color: transparent !important;
+  transition: background-color 150ms ease !important;
 }
 
 .zen-sidebar-panel-button:hover,
 #zen-sidebar-icons-wrapper toolbarbutton:hover,
 #zen-sidebar-top-buttons toolbarbutton:hover {
-  background: rgba(255,255,255,0.065) !important;
+  background-color: rgba(255,255,255,0.08) !important;
 }
 
-/* Opacity on icon child — reliable in XUL */
+.zen-sidebar-panel-button[open="true"],
+.zen-sidebar-panel-button[checked="true"] {
+  background-color: rgba(124,106,245,0.15) !important;
+}
+
 .zen-sidebar-panel-button .toolbarbutton-icon,
 #zen-sidebar-icons-wrapper toolbarbutton .toolbarbutton-icon,
 #zen-sidebar-top-buttons toolbarbutton .toolbarbutton-icon {
-  opacity: 0.55;
-  transition: opacity 120ms ease !important;
+  opacity: 0.5;
+  transition: opacity 150ms ease !important;
 }
 
 .zen-sidebar-panel-button:hover .toolbarbutton-icon,
@@ -367,31 +224,8 @@
   opacity: 1 !important;
 }
 
-.zen-sidebar-panel-button[open="true"],
-.zen-sidebar-panel-button[checked="true"] {
-  background: var(--zc-accent-dim) !important;
-  box-shadow: 0 0 0 1px rgba(124,106,245,0.20) !important;
-}
-
-/* Zen tab in sidebar */
-.zen-browser-tab {
-  border-radius: var(--zc-r-md) !important;
-  margin: 2px 6px !important;
-  transition: background 200ms ease, box-shadow 200ms ease !important;
-}
-
-.zen-browser-tab:not([selected]):hover {
-  background: rgba(255,255,255,0.065) !important;
-  box-shadow: 0 1px 4px rgba(0,0,0,0.40) !important;
-}
-
-.zen-browser-tab[selected="true"] {
-  background: var(--zc-bg-4) !important;
-  box-shadow: inset 2px 0 0 var(--zc-accent), var(--zc-shadow-sm) !important;
-}
-
 /* ──────────────────────────────────────────────
-   § 6  SIDEBAR PANEL (Bookmarks / History / etc.)
+   § 5  SIDEBAR PANEL
    ────────────────────────────────────────────── */
 #sidebar-box {
   background: var(--zc-bg-1) !important;
@@ -409,9 +243,8 @@
   text-transform: uppercase !important;
 }
 
-
 /* ──────────────────────────────────────────────
-   § 8  SCROLLBARS
+   § 6  SCROLLBARS
    ────────────────────────────────────────────── */
 scrollbar {
   width: 5px !important;
@@ -420,13 +253,13 @@ scrollbar {
 }
 
 scrollbar thumb {
-  background: rgba(255,255,255,0.14) !important;
+  background-color: rgba(255,255,255,0.14) !important;
   border-radius: 99px !important;
-  transition: background var(--zc-dur-fast) var(--zc-ease-snappy) !important;
+  transition: background-color 150ms ease !important;
 }
 
 scrollbar thumb:hover {
-  background: rgba(255,255,255,0.28) !important;
+  background-color: rgba(255,255,255,0.28) !important;
 }
 
 scrollbar button {
@@ -434,7 +267,7 @@ scrollbar button {
 }
 
 /* ──────────────────────────────────────────────
-   § 9  FIND BAR
+   § 7  FIND BAR
    ────────────────────────────────────────────── */
 .browser-findbar,
 #FindToolbar {
@@ -443,21 +276,16 @@ scrollbar button {
   border-radius: var(--zc-r-md) var(--zc-r-md) 0 0 !important;
   padding: 6px 10px !important;
   box-shadow: 0 -4px 20px rgba(0,0,0,0.35) !important;
-  animation: zc-findbar-in var(--zc-dur-mid) var(--zc-ease-out) both;
-}
-
-@keyframes zc-findbar-in {
-  from { opacity: 0; transform: translateY(8px); }
-  to   { opacity: 1; transform: translateY(0);   }
 }
 
 .findbar-textbox {
-  background: var(--zc-bg-3) !important;
+  -moz-appearance: none !important;
+  background-color: var(--zc-bg-3) !important;
   border: 1px solid var(--zc-border) !important;
   border-radius: var(--zc-r-sm) !important;
   color: var(--zc-text-1) !important;
   padding: 4px 8px !important;
-  transition: border-color var(--zc-dur-fast) var(--zc-ease-snappy) !important;
+  transition: border-color 150ms ease !important;
 }
 
 .findbar-textbox:focus {
@@ -466,22 +294,7 @@ scrollbar button {
 }
 
 /* ──────────────────────────────────────────────
-   § 10  NOTIFICATION BARS / POPUP NOTIFICATIONS
-   ────────────────────────────────────────────── */
-notification,
-.notificationbar-icon {
-  background: var(--zc-bg-2) !important;
-  border: 1px solid var(--zc-border) !important;
-  border-radius: var(--zc-r-md) !important;
-  color: var(--zc-text-1) !important;
-}
-
-notification.popup-notification-icon {
-  border-radius: var(--zc-r-xl) !important;
-}
-
-/* ──────────────────────────────────────────────
-   § 11  BOOKMARK TOOLBAR
+   § 8  BOOKMARK TOOLBAR
    ────────────────────────────────────────────── */
 #PersonalToolbar {
   background: var(--zc-bg-1) !important;
@@ -490,101 +303,85 @@ notification.popup-notification-icon {
 }
 
 toolbarbutton.bookmark-item {
+  -moz-appearance: none !important;
   border-radius: var(--zc-r-sm) !important;
+  border: none !important;
   padding: 3px 7px !important;
   color: var(--zc-text-2) !important;
   font-size: 12px !important;
-  transition:
-    background var(--zc-dur-fast) var(--zc-ease-snappy),
-    color      var(--zc-dur-fast) var(--zc-ease-snappy) !important;
+  background-color: transparent !important;
+  transition: background-color 150ms ease, color 150ms ease !important;
 }
 
 toolbarbutton.bookmark-item:hover {
-  background: var(--zc-glass-hover) !important;
+  background-color: rgba(255,255,255,0.08) !important;
   color: var(--zc-text-1) !important;
 }
 
 /* ──────────────────────────────────────────────
-   § 12  PAGE ACTION / IDENTITY BUTTON
+   § 9  IDENTITY / PAGE ACTION BUTTONS
    ────────────────────────────────────────────── */
 #identity-box {
+  -moz-appearance: none !important;
   border-radius: var(--zc-r-sm) !important;
   padding: 3px 6px !important;
-  transition: background 120ms ease !important;
+  background-color: transparent !important;
+  transition: background-color 150ms ease !important;
 }
 
 #identity-box:hover {
-  background: rgba(255,255,255,0.065) !important;
+  background-color: rgba(255,255,255,0.08) !important;
 }
 
 #identity-icon {
   opacity: 0.65;
-  transition: opacity 120ms ease !important;
+  transition: opacity 150ms ease !important;
 }
 
 #identity-box:hover #identity-icon {
   opacity: 1 !important;
 }
 
-/* ──────────────────────────────────────────────
-   § 13  EXTENSIONS / PAGE-ACTION ICONS
-   ────────────────────────────────────────────── */
 #pageActionButton,
 .webextension-browser-action {
+  -moz-appearance: none !important;
   border-radius: var(--zc-r-sm) !important;
-  transition: background 120ms ease !important;
+  border: none !important;
+  background-color: transparent !important;
+  transition: background-color 150ms ease !important;
 }
 
 #pageActionButton:hover,
 .webextension-browser-action:hover {
-  background: rgba(255,255,255,0.065) !important;
+  background-color: rgba(255,255,255,0.08) !important;
 }
 
 /* ──────────────────────────────────────────────
-   § 14  TAB PINNING — minimalist dot indicator
+   § 10  DOWNLOAD BADGE
    ────────────────────────────────────────────── */
-.tabbrowser-tab[pinned][selected="true"] .tab-content::after {
-  content: "";
-  position: absolute;
-  bottom: 4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  background: var(--zc-accent);
-  box-shadow: 0 0 6px var(--zc-accent-glow);
+#downloads-button[badge-status] .toolbarbutton-badge {
+  background-color: var(--zc-accent) !important;
+  box-shadow: 0 0 8px var(--zc-accent-glow) !important;
+  border-radius: 99px !important;
+  font-size: 8px !important;
+  min-width: 14px !important;
+  height: 14px !important;
 }
 
 /* ──────────────────────────────────────────────
-   § 15  MUTED / ATTENTION TAB BADGES
+   § 11  ZEN SPLIT VIEW DIVIDER
    ────────────────────────────────────────────── */
-.tab-icon-overlay {
-  border-radius: 50% !important;
-  background: var(--zc-bg-0) !important;
-  box-shadow: 0 0 0 1px var(--zc-border) !important;
+.zen-split-view-divider {
+  background-color: var(--zc-border) !important;
+  transition: background-color 150ms ease !important;
+}
+
+.zen-split-view-divider:hover {
+  background-color: var(--zc-accent) !important;
 }
 
 /* ──────────────────────────────────────────────
-   § 16  WINDOW CONTROLS (Linux / non-native)
-   ────────────────────────────────────────────── */
-.titlebar-buttonbox-container {
-  transition: opacity var(--zc-dur-mid) var(--zc-ease-snappy) !important;
-}
-
-.titlebar-button {
-  border-radius: 50% !important;
-  width: 12px !important;
-  height: 12px !important;
-  transition: filter var(--zc-dur-fast) var(--zc-ease-snappy) !important;
-}
-
-.titlebar-button:hover {
-  filter: brightness(1.4) saturate(1.2) !important;
-}
-
-/* ──────────────────────────────────────────────
-   § 17  GLOBAL FOCUS RING OVERRIDE
+   § 12  FOCUS RING
    ────────────────────────────────────────────── */
 :focus-visible {
   outline: 2px solid var(--zc-accent) !important;
@@ -593,10 +390,10 @@ toolbarbutton.bookmark-item:hover {
 }
 
 /* ──────────────────────────────────────────────
-   § 18  STATUS BAR / LINK HOVER POPUP
+   § 13  STATUS BAR
    ────────────────────────────────────────────── */
 #statuspanel-label {
-  background: var(--zc-bg-2) !important;
+  background-color: var(--zc-bg-2) !important;
   border: 1px solid var(--zc-border) !important;
   border-radius: var(--zc-r-sm) !important;
   color: var(--zc-text-2) !important;
@@ -606,55 +403,10 @@ toolbarbutton.bookmark-item:hover {
 }
 
 /* ──────────────────────────────────────────────
-   § 19  DOWNLOAD BUTTON BADGE
-   ────────────────────────────────────────────── */
-#downloads-button[badge-status] .toolbarbutton-badge {
-  background: var(--zc-accent) !important;
-  box-shadow: 0 0 8px var(--zc-accent-glow) !important;
-  border-radius: 99px !important;
-  font-size: 8px !important;
-  min-width: 14px !important;
-  height: 14px !important;
-}
-
-/* ──────────────────────────────────────────────
-   § 20  ZEN WORKSPACE / SPLIT VIEW DIVIDER
-   ────────────────────────────────────────────── */
-.zen-split-view-divider {
-  background: var(--zc-border) !important;
-  transition: background var(--zc-dur-fast) var(--zc-ease-snappy) !important;
-}
-
-.zen-split-view-divider:hover {
-  background: var(--zc-accent) !important;
-}
-
-/* ──────────────────────────────────────────────
-   § 21  SMOOTH PANEL / POPUP TRANSITIONS
-   ────────────────────────────────────────────── */
-panel[animate="open"] {
-  animation: zc-panel-in var(--zc-dur-mid) var(--zc-ease-out) both !important;
-}
-
-panel[animate="cancel"] {
-  animation: zc-panel-out var(--zc-dur-fast) var(--zc-ease-snappy) both !important;
-}
-
-@keyframes zc-panel-in {
-  from { opacity: 0; transform: scale(0.96) translateY(-6px); }
-  to   { opacity: 1; transform: scale(1)    translateY(0);    }
-}
-
-@keyframes zc-panel-out {
-  from { opacity: 1; transform: scale(1)    translateY(0);    }
-  to   { opacity: 0; transform: scale(0.96) translateY(-4px); }
-}
-
-/* ──────────────────────────────────────────────
-   § 22  TOOLTIP STYLING
+   § 14  TOOLTIP
    ────────────────────────────────────────────── */
 tooltip {
-  background: var(--zc-bg-2) !important;
+  background-color: var(--zc-bg-2) !important;
   border: 1px solid var(--zc-border) !important;
   border-radius: var(--zc-r-sm) !important;
   color: var(--zc-text-2) !important;
@@ -664,21 +416,23 @@ tooltip {
 }
 
 /* ──────────────────────────────────────────────
-   § 23  REDUCE VISUAL NOISE — HIDE EXTRAS
+   § 15  WINDOW CONTROLS (Linux)
    ────────────────────────────────────────────── */
-
-/* Remove tab bar bottom line artifact */
-#tabbrowser-tabs .tabbrowser-arrowscrollbox {
-  margin-bottom: 0 !important;
+.titlebar-button {
+  border-radius: 50% !important;
+  transition: filter 150ms ease !important;
 }
 
-/* Suppress audio icon jitter on very short tabs */
-.tab-icon-overlay[soundplaying],
-.tab-icon-overlay[muted] {
-  transition: opacity var(--zc-dur-mid) var(--zc-ease-snappy) !important;
+.titlebar-button:hover {
+  filter: brightness(1.4) saturate(1.2) !important;
 }
 
-/* Compact the new-tab page control strip */
-#customization-container {
-  background: var(--zc-bg-0) !important;
+/* ──────────────────────────────────────────────
+   § 16  NOTIFICATION BARS
+   ────────────────────────────────────────────── */
+notification {
+  background-color: var(--zc-bg-2) !important;
+  border: 1px solid var(--zc-border) !important;
+  border-radius: var(--zc-r-md) !important;
+  color: var(--zc-text-1) !important;
 }
