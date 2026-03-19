@@ -160,10 +160,7 @@
 #unified-extensions-button {
   border-radius: var(--zc-r-sm) !important;
   padding: 5px !important;
-  transition:
-    background  var(--zc-dur-fast) var(--zc-ease-snappy),
-    transform   var(--zc-dur-fast) var(--zc-ease-spring),
-    opacity     var(--zc-dur-fast) var(--zc-ease-snappy) !important;
+  transition: background var(--zc-dur-fast) var(--zc-ease-snappy) !important;
 }
 
 .toolbarbutton-1:hover,
@@ -173,7 +170,6 @@
 #stop-button:hover,
 #home-button:hover {
   background: var(--zc-glass-hover) !important;
-  transform: scale(1.08) !important;
 }
 
 .toolbarbutton-1:active,
@@ -181,20 +177,35 @@
 #forward-button:active,
 #reload-button:active {
   background: var(--zc-glass-act) !important;
-  transform: scale(0.96) !important;
+}
+
+/* Scale on the icon element — supports transform unlike XUL container */
+.toolbarbutton-1 .toolbarbutton-icon,
+#back-button .toolbarbutton-icon,
+#forward-button .toolbarbutton-icon,
+#reload-button .toolbarbutton-icon,
+#home-button .toolbarbutton-icon {
+  opacity: 0.65;
+  transition:
+    opacity   var(--zc-dur-fast) var(--zc-ease-snappy),
+    transform var(--zc-dur-fast) var(--zc-ease-spring) !important;
+}
+
+.toolbarbutton-1:hover .toolbarbutton-icon,
+#back-button:hover .toolbarbutton-icon,
+#forward-button:hover .toolbarbutton-icon,
+#reload-button:hover .toolbarbutton-icon,
+#home-button:hover .toolbarbutton-icon {
+  opacity: 1;
+  transform: scale(1.15) !important;
+}
+
+.toolbarbutton-1:active .toolbarbutton-icon,
+#back-button:active .toolbarbutton-icon,
+#forward-button:active .toolbarbutton-icon,
+#reload-button:active .toolbarbutton-icon {
+  transform: scale(0.90) !important;
   transition-duration: var(--zc-dur-fast) !important;
-}
-
-/* Button icons — subtle luminance */
-.toolbarbutton-1 image,
-.toolbarbutton-1 .toolbarbutton-icon {
-  opacity: 0.70;
-  transition: opacity var(--zc-dur-fast) var(--zc-ease-snappy) !important;
-}
-
-.toolbarbutton-1:hover image,
-.toolbarbutton-1:hover .toolbarbutton-icon {
-  opacity: 1.0;
 }
 
 /* Disabled state */
@@ -208,7 +219,6 @@
    ────────────────────────────────────────────── */
 #TabsToolbar {
   background: var(--zc-bg-1) !important;
-  padding: 4px 6px !important;
   border-bottom: 1px solid var(--zc-border) !important;
 }
 
@@ -218,8 +228,7 @@
   border-radius: var(--zc-r-sm) !important;
   opacity: 0.55;
   transition:
-    opacity   var(--zc-dur-fast) var(--zc-ease-snappy),
-    transform var(--zc-dur-fast) var(--zc-ease-spring),
+    opacity    var(--zc-dur-fast) var(--zc-ease-snappy),
     background var(--zc-dur-fast) var(--zc-ease-snappy) !important;
 }
 
@@ -227,23 +236,16 @@
 .tabs-newtab-button:hover {
   opacity: 1 !important;
   background: var(--zc-glass-hover) !important;
-  transform: scale(1.1) !important;
 }
 
-/* Individual tab */
+/* Individual tab — only style, no sizing */
 .tabbrowser-tab {
-  margin: 2px 2px !important;
-  padding: 0 !important;
   border-radius: var(--zc-r-md) !important;
-  transition:
-    background  var(--zc-dur-mid) var(--zc-ease-snappy),
-    box-shadow  var(--zc-dur-mid) var(--zc-ease-snappy),
-    transform   var(--zc-dur-mid) var(--zc-ease-spring) !important;
 }
 
 .tab-content {
   border-radius: var(--zc-r-md) !important;
-  padding: 4px 10px !important;
+  transition: background var(--zc-dur-mid) var(--zc-ease-snappy) !important;
 }
 
 /* Idle tab */
@@ -251,14 +253,10 @@
   background: transparent !important;
 }
 
-/* Tab hover */
+/* Tab hover — background only, no transform on XUL element */
 .tabbrowser-tab:not([selected]):hover .tab-content {
   background: var(--zc-glass-hover) !important;
-}
-
-.tabbrowser-tab:not([selected]):hover {
-  transform: translateY(-1px) !important;
-  box-shadow: 0 3px 10px rgba(0,0,0,0.35) !important;
+  box-shadow: var(--zc-shadow-sm) !important;
 }
 
 /* Active / selected tab */
@@ -267,10 +265,6 @@
   box-shadow:
     inset 0 1px 0 var(--zc-border-hi),
     var(--zc-shadow-sm) !important;
-}
-
-.tabbrowser-tab[selected="true"] {
-  box-shadow: none !important;
 }
 
 /* Active tab accent bar (top edge) */
@@ -300,10 +294,12 @@
   color: var(--zc-text-1) !important;
 }
 
-/* Favicon */
+/* Favicon — inner image supports transform */
 .tab-icon-image {
-  transition: transform var(--zc-dur-mid) var(--zc-ease-spring) !important;
   border-radius: 3px !important;
+  transition:
+    transform var(--zc-dur-mid) var(--zc-ease-spring),
+    opacity   var(--zc-dur-fast) var(--zc-ease-snappy) !important;
 }
 
 .tabbrowser-tab:hover .tab-icon-image {
@@ -314,17 +310,14 @@
 .tab-close-button {
   border-radius: var(--zc-r-sm) !important;
   opacity: 0 !important;
-  transform: scale(0.75) !important;
   transition:
-    opacity   var(--zc-dur-fast) var(--zc-ease-snappy),
-    transform var(--zc-dur-fast) var(--zc-ease-spring),
+    opacity    var(--zc-dur-fast) var(--zc-ease-snappy),
     background var(--zc-dur-fast) var(--zc-ease-snappy) !important;
 }
 
 .tabbrowser-tab:hover .tab-close-button,
 .tabbrowser-tab[selected="true"] .tab-close-button {
   opacity: 0.60 !important;
-  transform: scale(1) !important;
 }
 
 .tab-close-button:hover {
@@ -334,7 +327,6 @@
 
 .tab-close-button:active {
   background: rgba(255,80,80,0.30) !important;
-  transform: scale(0.90) !important;
 }
 
 /* Loading spinner */
@@ -369,16 +361,27 @@
   padding: 7px !important;
   background: transparent !important;
   transition:
-    background  var(--zc-dur-fast) var(--zc-ease-snappy),
-    transform   var(--zc-dur-fast) var(--zc-ease-spring),
-    box-shadow  var(--zc-dur-fast) var(--zc-ease-snappy) !important;
+    background var(--zc-dur-fast) var(--zc-ease-snappy),
+    box-shadow var(--zc-dur-fast) var(--zc-ease-snappy) !important;
 }
 
 .zen-sidebar-panel-button:hover,
 #zen-sidebar-icons-wrapper toolbarbutton:hover,
 #zen-sidebar-top-buttons toolbarbutton:hover {
   background: var(--zc-glass-hover) !important;
-  transform: scale(1.08) !important;
+}
+
+/* Scale the icon inside, not the XUL container */
+.zen-sidebar-panel-button .toolbarbutton-icon,
+#zen-sidebar-icons-wrapper toolbarbutton .toolbarbutton-icon,
+#zen-sidebar-top-buttons toolbarbutton .toolbarbutton-icon {
+  transition: transform var(--zc-dur-fast) var(--zc-ease-spring) !important;
+}
+
+.zen-sidebar-panel-button:hover .toolbarbutton-icon,
+#zen-sidebar-icons-wrapper toolbarbutton:hover .toolbarbutton-icon,
+#zen-sidebar-top-buttons toolbarbutton:hover .toolbarbutton-icon {
+  transform: scale(1.15) !important;
 }
 
 .zen-sidebar-panel-button[open="true"],
@@ -392,14 +395,13 @@
   border-radius: var(--zc-r-md) !important;
   margin: 2px 6px !important;
   transition:
-    background  var(--zc-dur-mid) var(--zc-ease-snappy),
-    transform   var(--zc-dur-mid) var(--zc-ease-spring),
-    box-shadow  var(--zc-dur-mid) var(--zc-ease-snappy) !important;
+    background var(--zc-dur-mid) var(--zc-ease-snappy),
+    box-shadow var(--zc-dur-mid) var(--zc-ease-snappy) !important;
 }
 
 .zen-browser-tab:not([selected]):hover {
   background: var(--zc-glass-hover) !important;
-  transform: translateX(2px) !important;
+  box-shadow: var(--zc-shadow-sm) !important;
 }
 
 .zen-browser-tab[selected="true"] {
@@ -649,14 +651,11 @@ toolbarbutton.bookmark-item:hover {
   border-radius: 50% !important;
   width: 12px !important;
   height: 12px !important;
-  transition:
-    transform var(--zc-dur-fast) var(--zc-ease-spring),
-    filter    var(--zc-dur-fast) var(--zc-ease-snappy) !important;
+  transition: filter var(--zc-dur-fast) var(--zc-ease-snappy) !important;
 }
 
 .titlebar-button:hover {
-  transform: scale(1.2) !important;
-  filter: brightness(1.3) !important;
+  filter: brightness(1.4) saturate(1.2) !important;
 }
 
 /* ──────────────────────────────────────────────
