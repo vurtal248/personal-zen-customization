@@ -1,5 +1,13 @@
-(function Custom() {
-
+// ==UserScript==
+// @name           Animations
+// @version        1.0
+// @author         vur
+// @description    JS
+// @compatibility  Zen Browser
+// ==/UserScript==
+ 
+(function InjectFunction() {
+ 
   const STYLE_ID = "obsidian-glass-anim";
   if (!document.getElementById(STYLE_ID)) {
     const style = document.createElement("style");
@@ -26,7 +34,7 @@
       .og-btn-active {
         background-color: rgba(255, 255, 255, 0.14) !important;
       }
-
+ 
       /* ── Tab expand animation ───────────────────── */
       /*
         Zen's sidebar tabs are vertical strips.
@@ -52,29 +60,29 @@
     `;
     document.head.appendChild(style);
   }
-
+ 
   /* ── Button helpers ──────────────────────────────── */
   function animateButton(el) {
     if (el._ogBound) return;
     el._ogBound = true;
     el.classList.add("og-animated");
-
+ 
     el.addEventListener("mouseenter", () => el.classList.add("og-btn-hover"));
     el.addEventListener("mouseleave", () => el.classList.remove("og-btn-hover", "og-btn-active"));
     el.addEventListener("mousedown",  () => el.classList.add("og-btn-active"));
     el.addEventListener("mouseup",    () => el.classList.remove("og-btn-active"));
   }
-
+ 
   /* ── Tab helpers ─────────────────────────────────── */
   function animateTab(el) {
     if (el._ogTabBound) return;
     el._ogTabBound = true;
     el.classList.add("og-tab-base");
-
+ 
     el.addEventListener("mouseenter", () => el.classList.add("og-tab-hover"));
     el.addEventListener("mouseleave", () => el.classList.remove("og-tab-hover"));
   }
-
+ 
   /* ── Selectors ───────────────────────────────────── */
   const BUTTON_SELECTORS = [
     "#reload-button",
@@ -90,18 +98,18 @@
     "#zen-sidebar-top-buttons toolbarbutton",
     "toolbarbutton.bookmark-item",
   ].join(", ");
-
+ 
   const TAB_SELECTORS = [
     ".zen-browser-tab",
     ".tabbrowser-tab",
   ].join(", ");
-
+ 
   /* ── Bind all current elements ───────────────────── */
   function bindAll() {
     document.querySelectorAll(BUTTON_SELECTORS).forEach(animateButton);
     document.querySelectorAll(TAB_SELECTORS).forEach(animateTab);
   }
-
+ 
   /* ── MutationObserver for dynamically added elements */
   const observer = new MutationObserver((mutations) => {
     for (const mutation of mutations) {
@@ -114,17 +122,17 @@
       }
     }
   });
-
+ 
   /* ── Init ────────────────────────────────────────── */
   function init() {
     bindAll();
     observer.observe(document.documentElement, { childList: true, subtree: true });
   }
-
+ 
   if (document.readyState === "complete") {
     init();
   } else {
     window.addEventListener("load", init, { once: true });
   }
-
+ 
 })();
