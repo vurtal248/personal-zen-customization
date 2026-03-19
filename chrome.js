@@ -3,7 +3,7 @@
 // @version        1.0
 // @author         vur
 // @description    JS
-// @compatibility  Zen Browser
+// @compatibility  Firefox 100+
 // ==/UserScript==
  
 (function InjectFunction() {
