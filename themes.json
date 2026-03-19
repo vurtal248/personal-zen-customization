@@ -1,0 +1,27 @@
+{
+  "id": "MyPreferences",
+  "homepage": "https://github.com/YOUR_USERNAME/obsidian-glass/",
+  "author": "YOUR_USERNAME",
+  "name": "Obsidian Glass",
+  "description": "A premium minimal dark theme with JS-powered hover and tab expand animations.",
+  "version": "1.0",
+  "createdAt": "2026-03-18",
+  "updatedAt": "2026-03-18",
+  "readme": "https://github.com/vurtal248/personal-zen-customization",
+  "js": true,
+  "scripts": {
+    "chrome.uc.js": {
+      "name": "Animations",
+      "description": "Hover and tab expand animations",
+      "include": [
+        "chrome://browser/content/browser.xhtml"
+      ]
+    }
+  },
+  "tags": [
+    "appearance"
+  ],
+  "fork": [
+    "zen"
+  ]
+}
