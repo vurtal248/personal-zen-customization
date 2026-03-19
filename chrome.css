@@ -1,0 +1,75 @@
+/* ============================================================
+   Obsidian Glass — chrome.css
+   Surfaces, colors, and borders only.
+   All hover animations are handled in chrome.js
+   ============================================================ */
+
+@import url("https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&display=swap");
+
+* {
+  font-family: "JetBrains Mono", ui-monospace, monospace !important;
+}
+
+:root {
+  --zc-bg-0:        #0b0b0d;
+  --zc-bg-1:        #111115;
+  --zc-bg-2:        #18181e;
+  --zc-bg-3:        #21212a;
+  --zc-bg-4:        #2a2a36;
+
+  --zc-border:      rgba(255,255,255,0.07);
+  --zc-border-hi:   rgba(255,255,255,0.13);
+
+  --zc-accent:      #7c6af5;
+  --zc-accent-glow: rgba(124,106,245,0.25);
+  --zc-accent-dim:  rgba(124,106,245,0.12);
+
+  --zc-text-1:      rgba(255,255,255,0.90);
+  --zc-text-2:      rgba(255,255,255,0.55);
+  --zc-text-3:      rgba(255,255,255,0.30);
+
+  --zc-r-sm:  6px;
+  --zc-r-md:  10px;
+  --zc-r-lg:  14px;
+
+  --zc-shadow-sm: 0 1px 4px rgba(0,0,0,0.40);
+  --zc-shadow-md: 0 4px 16px rgba(0,0,0,0.55);
+}
+
+/* Status bar */
+#statuspanel-label {
+  background-color: var(--zc-bg-2) !important;
+  border: 1px solid var(--zc-border) !important;
+  border-radius: var(--zc-r-sm) !important;
+  color: var(--zc-text-2) !important;
+  font-size: 11px !important;
+  padding: 3px 8px !important;
+  box-shadow: var(--zc-shadow-sm) !important;
+}
+
+/* Tooltip */
+tooltip {
+  background-color: var(--zc-bg-2) !important;
+  border: 1px solid var(--zc-border) !important;
+  border-radius: var(--zc-r-sm) !important;
+  color: var(--zc-text-2) !important;
+  font-size: 11.5px !important;
+  padding: 4px 9px !important;
+  box-shadow: var(--zc-shadow-md) !important;
+}
+
+/* Focus ring */
+:focus-visible {
+  outline: 2px solid var(--zc-accent) !important;
+  outline-offset: 2px !important;
+  border-radius: var(--zc-r-sm) !important;
+}
+
+/* Split view divider */
+.zen-split-view-divider {
+  background-color: rgba(255,255,255,0.07) !important;
+  transition: background-color 150ms ease !important;
+}
+.zen-split-view-divider:hover {
+  background-color: #7c6af5 !important;
+}
