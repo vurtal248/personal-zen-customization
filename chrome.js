@@ -1,16 +1,4 @@
-/* ============================================================
-   Obsidian Glass — chrome.js
-   Hover animations via DOM event listeners.
-   Runs in Zen's privileged chrome context via Sine.
-   ============================================================ */
-
-(function ObsidianGlass() {
-
-  /* ----------------------------------------------------------
-     Inject a <style> block with the animation classes.
-     JS adds/removes these classes on mouseenter/mouseleave,
-     which is more reliable than CSS :hover in XUL.
-  ---------------------------------------------------------- */
+(function Custom() {
   const STYLE_ID = "obsidian-glass-anim";
   if (!document.getElementById(STYLE_ID)) {
     const style = document.createElement("style");

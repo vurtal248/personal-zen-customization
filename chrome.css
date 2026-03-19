@@ -15,17 +15,6 @@
   box-shadow: var(--zc-shadow-sm) !important;
 }
 
-/* Tooltip */
-tooltip {
-  background-color: var(--zc-bg-2) !important;
-  border: 1px solid var(--zc-border) !important;
-  border-radius: var(--zc-r-sm) !important;
-  color: var(--zc-text-2) !important;
-  font-size: 11.5px !important;
-  padding: 4px 9px !important;
-  box-shadow: var(--zc-shadow-md) !important;
-}
-
 /* Focus ring */
 :focus-visible {
   outline: 2px solid var(--zc-accent) !important;
