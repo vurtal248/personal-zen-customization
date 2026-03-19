@@ -1,0 +1,751 @@
+/* ============================================================
+   ZEN BROWSER — userChrome.css
+   Theme: Obsidian Glass
+   A premium, minimal dark theme with silky micro-interactions
+   ============================================================
+   INSTALL: Place in your Zen profile's chrome/ folder.
+   Enable toolkit.legacyUserProfileCustomizations.stylesheets
+   in about:config.
+   ============================================================ */
+
+@namespace url("http://www.mozilla.org/keymaster/gatekeeper/there.is.only.xul");
+
+/* ──────────────────────────────────────────────
+   § 0  DESIGN TOKENS
+   ────────────────────────────────────────────── */
+:root {
+  /* Surface palette */
+  --zc-bg-0:        #0b0b0d;   /* deepest chrome bg          */
+  --zc-bg-1:        #111115;   /* sidebar / toolbar base     */
+  --zc-bg-2:        #18181e;   /* elevated surface           */
+  --zc-bg-3:        #21212a;   /* hover tint                 */
+  --zc-bg-4:        #2a2a36;   /* active / selected          */
+
+  /* Glass overlay */
+  --zc-glass:       rgba(255,255,255,0.035);
+  --zc-glass-hover: rgba(255,255,255,0.065);
+  --zc-glass-act:   rgba(255,255,255,0.09);
+
+  /* Borders */
+  --zc-border:      rgba(255,255,255,0.07);
+  --zc-border-hi:   rgba(255,255,255,0.13);
+
+  /* Accent */
+  --zc-accent:      #7c6af5;   /* violet                     */
+  --zc-accent-glow: rgba(124,106,245,0.25);
+  --zc-accent-dim:  rgba(124,106,245,0.12);
+
+  /* Text */
+  --zc-text-1:      rgba(255,255,255,0.90);
+  --zc-text-2:      rgba(255,255,255,0.55);
+  --zc-text-3:      rgba(255,255,255,0.30);
+
+  /* Radii */
+  --zc-r-sm:  6px;
+  --zc-r-md:  10px;
+  --zc-r-lg:  14px;
+  --zc-r-xl:  18px;
+
+  /* Shadows */
+  --zc-shadow-sm:  0 1px 4px rgba(0,0,0,0.40);
+  --zc-shadow-md:  0 4px 16px rgba(0,0,0,0.55);
+  --zc-shadow-lg:  0 8px 32px rgba(0,0,0,0.65);
+
+  /* Motion curves */
+  --zc-ease-out:    cubic-bezier(0.22, 1, 0.36, 1);
+  --zc-ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --zc-ease-snappy: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Durations */
+  --zc-dur-fast:   120ms;
+  --zc-dur-mid:    200ms;
+  --zc-dur-slow:   320ms;
+}
+
+/* ──────────────────────────────────────────────
+   § 1  WINDOW CHROME & TOOLBOX
+   ────────────────────────────────────────────── */
+#navigator-toolbox {
+  background: var(--zc-bg-1) !important;
+  border-bottom: 1px solid var(--zc-border) !important;
+  padding: 0 !important;
+}
+
+/* Remove the default separator line between toolbar and content */
+#navigator-toolbox::after {
+  display: none !important;
+}
+
+/* Main browser window */
+#browser {
+  background: var(--zc-bg-0) !important;
+}
+
+/* ──────────────────────────────────────────────
+   § 2  NAVIGATION BAR (URL Bar row)
+   ────────────────────────────────────────────── */
+#nav-bar {
+  background: transparent !important;
+  padding: 6px 10px !important;
+  border: none !important;
+  box-shadow: none !important;
+}
+
+/* URL bar container */
+#urlbar {
+  --urlbar-box-bgcolor:         var(--zc-bg-2) !important;
+  --urlbar-box-focus-bgcolor:   var(--zc-bg-3) !important;
+  --urlbar-box-hover-bgcolor:   var(--zc-bg-3) !important;
+  --urlbar-box-active-bgcolor:  var(--zc-bg-4) !important;
+  border-radius: var(--zc-r-lg) !important;
+  border: 1px solid var(--zc-border) !important;
+  box-shadow: var(--zc-shadow-sm) !important;
+  transition:
+    border-color  var(--zc-dur-mid) var(--zc-ease-snappy),
+    box-shadow    var(--zc-dur-mid) var(--zc-ease-snappy),
+    background    var(--zc-dur-mid) var(--zc-ease-snappy) !important;
+  overflow: hidden;
+}
+
+#urlbar:hover {
+  border-color: var(--zc-border-hi) !important;
+  box-shadow: var(--zc-shadow-sm), 0 0 0 1px var(--zc-border-hi) !important;
+}
+
+#urlbar[focused="true"] {
+  border-color: var(--zc-accent) !important;
+  box-shadow:
+    var(--zc-shadow-md),
+    0 0 0 3px var(--zc-accent-dim),
+    0 0 16px var(--zc-accent-glow) !important;
+}
+
+#urlbar-background {
+  border-radius: var(--zc-r-lg) !important;
+  background: var(--zc-bg-2) !important;
+  border: none !important;
+}
+
+/* URL input text */
+#urlbar-input {
+  color: var(--zc-text-1) !important;
+  font-size: 13px !important;
+  letter-spacing: 0.01em !important;
+}
+
+/* Dimmed protocol prefix (http/https) */
+.urlbar-scheme {
+  color: var(--zc-text-3) !important;
+}
+
+/* ──────────────────────────────────────────────
+   § 3  TOOLBAR BUTTONS (Back, Forward, Reload…)
+   ────────────────────────────────────────────── */
+.toolbarbutton-1,
+#back-button,
+#forward-button,
+#reload-button,
+#stop-button,
+#home-button,
+#downloads-button,
+#unified-extensions-button {
+  border-radius: var(--zc-r-sm) !important;
+  padding: 5px !important;
+  transition:
+    background  var(--zc-dur-fast) var(--zc-ease-snappy),
+    transform   var(--zc-dur-fast) var(--zc-ease-spring),
+    opacity     var(--zc-dur-fast) var(--zc-ease-snappy) !important;
+}
+
+.toolbarbutton-1:hover,
+#back-button:hover,
+#forward-button:hover,
+#reload-button:hover,
+#stop-button:hover,
+#home-button:hover {
+  background: var(--zc-glass-hover) !important;
+  transform: scale(1.08) !important;
+}
+
+.toolbarbutton-1:active,
+#back-button:active,
+#forward-button:active,
+#reload-button:active {
+  background: var(--zc-glass-act) !important;
+  transform: scale(0.96) !important;
+  transition-duration: var(--zc-dur-fast) !important;
+}
+
+/* Button icons — subtle luminance */
+.toolbarbutton-1 image,
+.toolbarbutton-1 .toolbarbutton-icon {
+  opacity: 0.70;
+  transition: opacity var(--zc-dur-fast) var(--zc-ease-snappy) !important;
+}
+
+.toolbarbutton-1:hover image,
+.toolbarbutton-1:hover .toolbarbutton-icon {
+  opacity: 1.0;
+}
+
+/* Disabled state */
+#back-button[disabled="true"],
+#forward-button[disabled="true"] {
+  opacity: 0.25 !important;
+}
+
+/* ──────────────────────────────────────────────
+   § 4  TAB BAR (Horizontal — fallback / compact)
+   ────────────────────────────────────────────── */
+#TabsToolbar {
+  background: var(--zc-bg-1) !important;
+  padding: 4px 6px !important;
+  border-bottom: 1px solid var(--zc-border) !important;
+}
+
+/* New-tab button */
+#tabs-newtab-button,
+.tabs-newtab-button {
+  border-radius: var(--zc-r-sm) !important;
+  opacity: 0.55;
+  transition:
+    opacity   var(--zc-dur-fast) var(--zc-ease-snappy),
+    transform var(--zc-dur-fast) var(--zc-ease-spring),
+    background var(--zc-dur-fast) var(--zc-ease-snappy) !important;
+}
+
+#tabs-newtab-button:hover,
+.tabs-newtab-button:hover {
+  opacity: 1 !important;
+  background: var(--zc-glass-hover) !important;
+  transform: scale(1.1) !important;
+}
+
+/* Individual tab */
+.tabbrowser-tab {
+  margin: 2px 2px !important;
+  padding: 0 !important;
+  border-radius: var(--zc-r-md) !important;
+  transition:
+    background  var(--zc-dur-mid) var(--zc-ease-snappy),
+    box-shadow  var(--zc-dur-mid) var(--zc-ease-snappy),
+    transform   var(--zc-dur-mid) var(--zc-ease-spring) !important;
+  min-height: 34px !important;
+}
+
+.tab-content {
+  border-radius: var(--zc-r-md) !important;
+  padding: 4px 10px !important;
+}
+
+/* Idle tab */
+.tabbrowser-tab:not([selected]):not([multiselected]) .tab-content {
+  background: transparent !important;
+}
+
+/* Tab hover */
+.tabbrowser-tab:not([selected]):hover .tab-content {
+  background: var(--zc-glass-hover) !important;
+}
+
+.tabbrowser-tab:not([selected]):hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 3px 10px rgba(0,0,0,0.35) !important;
+}
+
+/* Active / selected tab */
+.tabbrowser-tab[selected="true"] .tab-content {
+  background: var(--zc-bg-4) !important;
+  box-shadow:
+    inset 0 1px 0 var(--zc-border-hi),
+    var(--zc-shadow-sm) !important;
+}
+
+.tabbrowser-tab[selected="true"] {
+  box-shadow: none !important;
+}
+
+/* Active tab accent bar (top edge) */
+.tabbrowser-tab[selected="true"] .tab-content::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 20%;
+  right: 20%;
+  height: 2px;
+  background: linear-gradient(90deg, transparent, var(--zc-accent), transparent);
+  border-radius: 0 0 2px 2px;
+  opacity: 0.85;
+}
+
+/* Tab label */
+.tab-label {
+  color: var(--zc-text-2) !important;
+  font-size: 12.5px !important;
+  font-weight: 450 !important;
+  letter-spacing: 0.01em !important;
+  transition: color var(--zc-dur-fast) var(--zc-ease-snappy) !important;
+}
+
+.tabbrowser-tab:hover .tab-label,
+.tabbrowser-tab[selected="true"] .tab-label {
+  color: var(--zc-text-1) !important;
+}
+
+/* Favicon */
+.tab-icon-image {
+  transition: transform var(--zc-dur-mid) var(--zc-ease-spring) !important;
+  border-radius: 3px !important;
+}
+
+.tabbrowser-tab:hover .tab-icon-image {
+  transform: scale(1.12) !important;
+}
+
+/* Close button */
+.tab-close-button {
+  border-radius: var(--zc-r-sm) !important;
+  opacity: 0 !important;
+  transform: scale(0.75) !important;
+  transition:
+    opacity   var(--zc-dur-fast) var(--zc-ease-snappy),
+    transform var(--zc-dur-fast) var(--zc-ease-spring),
+    background var(--zc-dur-fast) var(--zc-ease-snappy) !important;
+}
+
+.tabbrowser-tab:hover .tab-close-button,
+.tabbrowser-tab[selected="true"] .tab-close-button {
+  opacity: 0.60 !important;
+  transform: scale(1) !important;
+}
+
+.tab-close-button:hover {
+  background: rgba(255,80,80,0.18) !important;
+  opacity: 1 !important;
+}
+
+.tab-close-button:active {
+  background: rgba(255,80,80,0.30) !important;
+  transform: scale(0.90) !important;
+}
+
+/* Loading spinner */
+.tab-throbber {
+  opacity: 0.55 !important;
+}
+
+/* Tab overflow buttons */
+.tabbrowser-arrowscrollbox-overflow-start-indicator,
+.tabbrowser-arrowscrollbox-overflow-end-indicator {
+  background: linear-gradient(to right, var(--zc-bg-1), transparent) !important;
+}
+
+/* ──────────────────────────────────────────────
+   § 5  ZEN SIDEBAR (Vertical nav panel)
+   ────────────────────────────────────────────── */
+#zen-sidebar-icons-wrapper,
+#zen-sidebar-top-buttons,
+.zen-sidebar-panel-button,
+#zen-appcontent-navbar {
+  background: var(--zc-bg-1) !important;
+  border-right: 1px solid var(--zc-border) !important;
+}
+
+/* Sidebar icon buttons */
+.zen-sidebar-panel-button,
+#zen-sidebar-icons-wrapper toolbarbutton,
+#zen-sidebar-top-buttons toolbarbutton {
+  border-radius: var(--zc-r-md) !important;
+  margin: 2px 4px !important;
+  padding: 7px !important;
+  background: transparent !important;
+  transition:
+    background  var(--zc-dur-fast) var(--zc-ease-snappy),
+    transform   var(--zc-dur-fast) var(--zc-ease-spring),
+    box-shadow  var(--zc-dur-fast) var(--zc-ease-snappy) !important;
+}
+
+.zen-sidebar-panel-button:hover,
+#zen-sidebar-icons-wrapper toolbarbutton:hover,
+#zen-sidebar-top-buttons toolbarbutton:hover {
+  background: var(--zc-glass-hover) !important;
+  transform: scale(1.08) !important;
+}
+
+.zen-sidebar-panel-button[open="true"],
+.zen-sidebar-panel-button[checked="true"] {
+  background: var(--zc-accent-dim) !important;
+  box-shadow: 0 0 0 1px rgba(124,106,245,0.20) !important;
+}
+
+/* Zen tab in sidebar */
+.zen-browser-tab {
+  border-radius: var(--zc-r-md) !important;
+  margin: 2px 6px !important;
+  transition:
+    background  var(--zc-dur-mid) var(--zc-ease-snappy),
+    transform   var(--zc-dur-mid) var(--zc-ease-spring),
+    box-shadow  var(--zc-dur-mid) var(--zc-ease-snappy) !important;
+}
+
+.zen-browser-tab:not([selected]):hover {
+  background: var(--zc-glass-hover) !important;
+  transform: translateX(2px) !important;
+}
+
+.zen-browser-tab[selected="true"] {
+  background: var(--zc-bg-4) !important;
+  box-shadow: inset 2px 0 0 var(--zc-accent), var(--zc-shadow-sm) !important;
+}
+
+/* ──────────────────────────────────────────────
+   § 6  SIDEBAR PANEL (Bookmarks / History / etc.)
+   ────────────────────────────────────────────── */
+#sidebar-box {
+  background: var(--zc-bg-1) !important;
+  border-right: 1px solid var(--zc-border) !important;
+  min-width: 200px;
+}
+
+#sidebar-header {
+  background: var(--zc-bg-1) !important;
+  border-bottom: 1px solid var(--zc-border) !important;
+  padding: 8px 12px !important;
+  color: var(--zc-text-2) !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+
+/* ──────────────────────────────────────────────
+   § 7  CONTEXT MENUS
+   ────────────────────────────────────────────── */
+menupopup,
+panel[type="arrow"] {
+  --arrowpanel-background: var(--zc-bg-2) !important;
+  --arrowpanel-border-color: var(--zc-border) !important;
+  background: var(--zc-bg-2) !important;
+  border: 1px solid var(--zc-border) !important;
+  border-radius: var(--zc-r-lg) !important;
+  padding: 5px !important;
+  box-shadow: var(--zc-shadow-lg), 0 0 0 1px var(--zc-border) !important;
+  backdrop-filter: blur(24px) !important;
+  -moz-appearance: none !important;
+  overflow: hidden !important;
+  animation: zc-menu-in var(--zc-dur-mid) var(--zc-ease-out) both !important;
+}
+
+@keyframes zc-menu-in {
+  from { opacity: 0; transform: scale(0.97) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+
+menuitem {
+  border-radius: var(--zc-r-sm) !important;
+  padding: 6px 10px !important;
+  color: var(--zc-text-2) !important;
+  font-size: 12.5px !important;
+  transition:
+    background var(--zc-dur-fast) var(--zc-ease-snappy),
+    color      var(--zc-dur-fast) var(--zc-ease-snappy) !important;
+}
+
+menuitem:hover {
+  background: var(--zc-glass-hover) !important;
+  color: var(--zc-text-1) !important;
+}
+
+menuitem[disabled="true"] {
+  opacity: 0.35 !important;
+}
+
+menuseparator {
+  border-color: var(--zc-border) !important;
+  margin: 4px 8px !important;
+}
+
+/* ──────────────────────────────────────────────
+   § 8  SCROLLBARS
+   ────────────────────────────────────────────── */
+scrollbar {
+  width: 5px !important;
+  height: 5px !important;
+  background: transparent !important;
+}
+
+scrollbar thumb {
+  background: rgba(255,255,255,0.14) !important;
+  border-radius: 99px !important;
+  transition: background var(--zc-dur-fast) var(--zc-ease-snappy) !important;
+}
+
+scrollbar thumb:hover {
+  background: rgba(255,255,255,0.28) !important;
+}
+
+scrollbar button {
+  display: none !important;
+}
+
+/* ──────────────────────────────────────────────
+   § 9  FIND BAR
+   ────────────────────────────────────────────── */
+.browser-findbar,
+#FindToolbar {
+  background: var(--zc-bg-2) !important;
+  border-top: 1px solid var(--zc-border) !important;
+  border-radius: var(--zc-r-md) var(--zc-r-md) 0 0 !important;
+  padding: 6px 10px !important;
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.35) !important;
+  animation: zc-findbar-in var(--zc-dur-mid) var(--zc-ease-out) both;
+}
+
+@keyframes zc-findbar-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0);   }
+}
+
+.findbar-textbox {
+  background: var(--zc-bg-3) !important;
+  border: 1px solid var(--zc-border) !important;
+  border-radius: var(--zc-r-sm) !important;
+  color: var(--zc-text-1) !important;
+  padding: 4px 8px !important;
+  transition: border-color var(--zc-dur-fast) var(--zc-ease-snappy) !important;
+}
+
+.findbar-textbox:focus {
+  border-color: var(--zc-accent) !important;
+  box-shadow: 0 0 0 2px var(--zc-accent-dim) !important;
+}
+
+/* ──────────────────────────────────────────────
+   § 10  NOTIFICATION BARS / POPUP NOTIFICATIONS
+   ────────────────────────────────────────────── */
+notification,
+.notificationbar-icon {
+  background: var(--zc-bg-2) !important;
+  border: 1px solid var(--zc-border) !important;
+  border-radius: var(--zc-r-md) !important;
+  color: var(--zc-text-1) !important;
+}
+
+notification.popup-notification-icon {
+  border-radius: var(--zc-r-xl) !important;
+}
+
+/* ──────────────────────────────────────────────
+   § 11  BOOKMARK TOOLBAR
+   ────────────────────────────────────────────── */
+#PersonalToolbar {
+  background: var(--zc-bg-1) !important;
+  border-bottom: 1px solid var(--zc-border) !important;
+  padding: 3px 8px !important;
+}
+
+toolbarbutton.bookmark-item {
+  border-radius: var(--zc-r-sm) !important;
+  padding: 3px 7px !important;
+  color: var(--zc-text-2) !important;
+  font-size: 12px !important;
+  transition:
+    background var(--zc-dur-fast) var(--zc-ease-snappy),
+    color      var(--zc-dur-fast) var(--zc-ease-snappy) !important;
+}
+
+toolbarbutton.bookmark-item:hover {
+  background: var(--zc-glass-hover) !important;
+  color: var(--zc-text-1) !important;
+}
+
+/* ──────────────────────────────────────────────
+   § 12  PAGE ACTION / IDENTITY BUTTON
+   ────────────────────────────────────────────── */
+#identity-box {
+  border-radius: var(--zc-r-sm) !important;
+  padding: 3px 6px !important;
+  transition:
+    background var(--zc-dur-fast) var(--zc-ease-snappy),
+    transform  var(--zc-dur-fast) var(--zc-ease-spring) !important;
+}
+
+#identity-box:hover {
+  background: var(--zc-glass-hover) !important;
+}
+
+/* HTTPS lock icon */
+#identity-icon {
+  transition: transform var(--zc-dur-mid) var(--zc-ease-spring) !important;
+}
+
+#identity-box:hover #identity-icon {
+  transform: scale(1.12) !important;
+}
+
+/* ──────────────────────────────────────────────
+   § 13  EXTENSIONS / PAGE-ACTION ICONS
+   ────────────────────────────────────────────── */
+#pageActionButton,
+.webextension-browser-action {
+  border-radius: var(--zc-r-sm) !important;
+  transition:
+    background  var(--zc-dur-fast) var(--zc-ease-snappy),
+    transform   var(--zc-dur-fast) var(--zc-ease-spring) !important;
+}
+
+#pageActionButton:hover,
+.webextension-browser-action:hover {
+  background: var(--zc-glass-hover) !important;
+  transform: scale(1.08) !important;
+}
+
+/* ──────────────────────────────────────────────
+   § 14  TAB PINNING — minimalist dot indicator
+   ────────────────────────────────────────────── */
+.tabbrowser-tab[pinned] .tab-content {
+  padding: 4px 7px !important;
+}
+
+.tabbrowser-tab[pinned][selected="true"] .tab-content::after {
+  content: "";
+  position: absolute;
+  bottom: 4px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  background: var(--zc-accent);
+  box-shadow: 0 0 6px var(--zc-accent-glow);
+}
+
+/* ──────────────────────────────────────────────
+   § 15  MUTED / ATTENTION TAB BADGES
+   ────────────────────────────────────────────── */
+.tab-icon-overlay {
+  border-radius: 50% !important;
+  background: var(--zc-bg-0) !important;
+  box-shadow: 0 0 0 1px var(--zc-border) !important;
+}
+
+/* ──────────────────────────────────────────────
+   § 16  WINDOW CONTROLS (Linux / non-native)
+   ────────────────────────────────────────────── */
+.titlebar-buttonbox-container {
+  transition: opacity var(--zc-dur-mid) var(--zc-ease-snappy) !important;
+}
+
+.titlebar-button {
+  border-radius: 50% !important;
+  width: 12px !important;
+  height: 12px !important;
+  transition:
+    transform var(--zc-dur-fast) var(--zc-ease-spring),
+    filter    var(--zc-dur-fast) var(--zc-ease-snappy) !important;
+}
+
+.titlebar-button:hover {
+  transform: scale(1.2) !important;
+  filter: brightness(1.3) !important;
+}
+
+/* ──────────────────────────────────────────────
+   § 17  GLOBAL FOCUS RING OVERRIDE
+   ────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--zc-accent) !important;
+  outline-offset: 2px !important;
+  border-radius: var(--zc-r-sm) !important;
+}
+
+/* ──────────────────────────────────────────────
+   § 18  STATUS BAR / LINK HOVER POPUP
+   ────────────────────────────────────────────── */
+#statuspanel-label {
+  background: var(--zc-bg-2) !important;
+  border: 1px solid var(--zc-border) !important;
+  border-radius: var(--zc-r-sm) !important;
+  color: var(--zc-text-2) !important;
+  font-size: 11px !important;
+  padding: 3px 8px !important;
+  box-shadow: var(--zc-shadow-sm) !important;
+}
+
+/* ──────────────────────────────────────────────
+   § 19  DOWNLOAD BUTTON BADGE
+   ────────────────────────────────────────────── */
+#downloads-button[badge-status] .toolbarbutton-badge {
+  background: var(--zc-accent) !important;
+  box-shadow: 0 0 8px var(--zc-accent-glow) !important;
+  border-radius: 99px !important;
+  font-size: 8px !important;
+  min-width: 14px !important;
+  height: 14px !important;
+}
+
+/* ──────────────────────────────────────────────
+   § 20  ZEN WORKSPACE / SPLIT VIEW DIVIDER
+   ────────────────────────────────────────────── */
+.zen-split-view-divider {
+  background: var(--zc-border) !important;
+  transition: background var(--zc-dur-fast) var(--zc-ease-snappy) !important;
+}
+
+.zen-split-view-divider:hover {
+  background: var(--zc-accent) !important;
+}
+
+/* ──────────────────────────────────────────────
+   § 21  SMOOTH PANEL / POPUP TRANSITIONS
+   ────────────────────────────────────────────── */
+panel[animate="open"] {
+  animation: zc-panel-in var(--zc-dur-mid) var(--zc-ease-out) both !important;
+}
+
+panel[animate="cancel"] {
+  animation: zc-panel-out var(--zc-dur-fast) var(--zc-ease-snappy) both !important;
+}
+
+@keyframes zc-panel-in {
+  from { opacity: 0; transform: scale(0.96) translateY(-6px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);    }
+}
+
+@keyframes zc-panel-out {
+  from { opacity: 1; transform: scale(1)    translateY(0);    }
+  to   { opacity: 0; transform: scale(0.96) translateY(-4px); }
+}
+
+/* ──────────────────────────────────────────────
+   § 22  TOOLTIP STYLING
+   ────────────────────────────────────────────── */
+tooltip {
+  background: var(--zc-bg-2) !important;
+  border: 1px solid var(--zc-border) !important;
+  border-radius: var(--zc-r-sm) !important;
+  color: var(--zc-text-2) !important;
+  font-size: 11.5px !important;
+  padding: 4px 9px !important;
+  box-shadow: var(--zc-shadow-md) !important;
+}
+
+/* ──────────────────────────────────────────────
+   § 23  REDUCE VISUAL NOISE — HIDE EXTRAS
+   ────────────────────────────────────────────── */
+
+/* Remove tab bar bottom line artifact */
+#tabbrowser-tabs .tabbrowser-arrowscrollbox {
+  margin-bottom: 0 !important;
+}
+
+/* Suppress audio icon jitter on very short tabs */
+.tab-icon-overlay[soundplaying],
+.tab-icon-overlay[muted] {
+  transition: opacity var(--zc-dur-mid) var(--zc-ease-snappy) !important;
+}
+
+/* Compact the new-tab page control strip */
+#customization-container {
+  background: var(--zc-bg-0) !important;
+}
