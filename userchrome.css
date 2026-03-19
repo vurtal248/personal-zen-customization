@@ -160,7 +160,7 @@
 #unified-extensions-button {
   border-radius: var(--zc-r-sm) !important;
   padding: 5px !important;
-  transition: background var(--zc-dur-fast) var(--zc-ease-snappy) !important;
+  transition: background 120ms ease !important;
 }
 
 .toolbarbutton-1:hover,
@@ -169,26 +169,24 @@
 #reload-button:hover,
 #stop-button:hover,
 #home-button:hover {
-  background: var(--zc-glass-hover) !important;
+  background: rgba(255,255,255,0.065) !important;
 }
 
 .toolbarbutton-1:active,
 #back-button:active,
 #forward-button:active,
 #reload-button:active {
-  background: var(--zc-glass-act) !important;
+  background: rgba(255,255,255,0.09) !important;
 }
 
-/* Scale on the icon element — supports transform unlike XUL container */
+/* Opacity on the icon — most reliable animatable property in XUL */
 .toolbarbutton-1 .toolbarbutton-icon,
 #back-button .toolbarbutton-icon,
 #forward-button .toolbarbutton-icon,
 #reload-button .toolbarbutton-icon,
 #home-button .toolbarbutton-icon {
-  opacity: 0.65;
-  transition:
-    opacity   var(--zc-dur-fast) var(--zc-ease-snappy),
-    transform var(--zc-dur-fast) var(--zc-ease-spring) !important;
+  opacity: 0.55;
+  transition: opacity 120ms ease !important;
 }
 
 .toolbarbutton-1:hover .toolbarbutton-icon,
@@ -196,16 +194,7 @@
 #forward-button:hover .toolbarbutton-icon,
 #reload-button:hover .toolbarbutton-icon,
 #home-button:hover .toolbarbutton-icon {
-  opacity: 1;
-  transform: scale(1.15) !important;
-}
-
-.toolbarbutton-1:active .toolbarbutton-icon,
-#back-button:active .toolbarbutton-icon,
-#forward-button:active .toolbarbutton-icon,
-#reload-button:active .toolbarbutton-icon {
-  transform: scale(0.90) !important;
-  transition-duration: var(--zc-dur-fast) !important;
+  opacity: 1 !important;
 }
 
 /* Disabled state */
@@ -238,14 +227,14 @@
   background: var(--zc-glass-hover) !important;
 }
 
-/* Individual tab — only style, no sizing */
+/* Individual tab — cosmetic only, no sizing */
 .tabbrowser-tab {
   border-radius: var(--zc-r-md) !important;
 }
 
 .tab-content {
   border-radius: var(--zc-r-md) !important;
-  transition: background var(--zc-dur-mid) var(--zc-ease-snappy) !important;
+  transition: background 200ms ease, box-shadow 200ms ease !important;
 }
 
 /* Idle tab */
@@ -253,21 +242,19 @@
   background: transparent !important;
 }
 
-/* Tab hover — background only, no transform on XUL element */
+/* Tab hover */
 .tabbrowser-tab:not([selected]):hover .tab-content {
-  background: var(--zc-glass-hover) !important;
-  box-shadow: var(--zc-shadow-sm) !important;
+  background: rgba(255,255,255,0.065) !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.40) !important;
 }
 
 /* Active / selected tab */
 .tabbrowser-tab[selected="true"] .tab-content {
-  background: var(--zc-bg-4) !important;
-  box-shadow:
-    inset 0 1px 0 var(--zc-border-hi),
-    var(--zc-shadow-sm) !important;
+  background: #2a2a36 !important;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.13), 0 1px 4px rgba(0,0,0,0.40) !important;
 }
 
-/* Active tab accent bar (top edge) */
+/* Active tab accent bar */
 .tabbrowser-tab[selected="true"] .tab-content::before {
   content: "";
   position: absolute;
@@ -275,49 +262,47 @@
   left: 20%;
   right: 20%;
   height: 2px;
-  background: linear-gradient(90deg, transparent, var(--zc-accent), transparent);
+  background: linear-gradient(90deg, transparent, #7c6af5, transparent);
   border-radius: 0 0 2px 2px;
   opacity: 0.85;
 }
 
 /* Tab label */
 .tab-label {
-  color: var(--zc-text-2) !important;
+  color: rgba(255,255,255,0.55) !important;
   font-size: 12.5px !important;
   font-weight: 450 !important;
   letter-spacing: 0.01em !important;
-  transition: color var(--zc-dur-fast) var(--zc-ease-snappy) !important;
+  transition: color 120ms ease !important;
 }
 
 .tabbrowser-tab:hover .tab-label,
 .tabbrowser-tab[selected="true"] .tab-label {
-  color: var(--zc-text-1) !important;
+  color: rgba(255,255,255,0.90) !important;
 }
 
-/* Favicon — inner image supports transform */
+/* Favicon */
 .tab-icon-image {
   border-radius: 3px !important;
-  transition:
-    transform var(--zc-dur-mid) var(--zc-ease-spring),
-    opacity   var(--zc-dur-fast) var(--zc-ease-snappy) !important;
+  opacity: 0.75;
+  transition: opacity 120ms ease !important;
 }
 
-.tabbrowser-tab:hover .tab-icon-image {
-  transform: scale(1.12) !important;
+.tabbrowser-tab:hover .tab-icon-image,
+.tabbrowser-tab[selected="true"] .tab-icon-image {
+  opacity: 1 !important;
 }
 
 /* Close button */
 .tab-close-button {
   border-radius: var(--zc-r-sm) !important;
   opacity: 0 !important;
-  transition:
-    opacity    var(--zc-dur-fast) var(--zc-ease-snappy),
-    background var(--zc-dur-fast) var(--zc-ease-snappy) !important;
+  transition: opacity 120ms ease, background 120ms ease !important;
 }
 
 .tabbrowser-tab:hover .tab-close-button,
 .tabbrowser-tab[selected="true"] .tab-close-button {
-  opacity: 0.60 !important;
+  opacity: 0.55 !important;
 }
 
 .tab-close-button:hover {
@@ -334,10 +319,10 @@
   opacity: 0.55 !important;
 }
 
-/* Tab overflow buttons */
+/* Tab overflow fade */
 .tabbrowser-arrowscrollbox-overflow-start-indicator,
 .tabbrowser-arrowscrollbox-overflow-end-indicator {
-  background: linear-gradient(to right, var(--zc-bg-1), transparent) !important;
+  background: linear-gradient(to right, #111115, transparent) !important;
 }
 
 /* ──────────────────────────────────────────────
@@ -349,7 +334,6 @@
 #zen-appcontent-navbar {
   background: var(--zc-bg-1) !important;
   border-right: 1px solid var(--zc-border) !important;
-  min-width: 0 !important;
 }
 
 /* Sidebar icon buttons */
@@ -360,28 +344,27 @@
   margin: 2px 4px !important;
   padding: 7px !important;
   background: transparent !important;
-  transition:
-    background var(--zc-dur-fast) var(--zc-ease-snappy),
-    box-shadow var(--zc-dur-fast) var(--zc-ease-snappy) !important;
+  transition: background 120ms ease !important;
 }
 
 .zen-sidebar-panel-button:hover,
 #zen-sidebar-icons-wrapper toolbarbutton:hover,
 #zen-sidebar-top-buttons toolbarbutton:hover {
-  background: var(--zc-glass-hover) !important;
+  background: rgba(255,255,255,0.065) !important;
 }
 
-/* Scale the icon inside, not the XUL container */
+/* Opacity on icon child — reliable in XUL */
 .zen-sidebar-panel-button .toolbarbutton-icon,
 #zen-sidebar-icons-wrapper toolbarbutton .toolbarbutton-icon,
 #zen-sidebar-top-buttons toolbarbutton .toolbarbutton-icon {
-  transition: transform var(--zc-dur-fast) var(--zc-ease-spring) !important;
+  opacity: 0.55;
+  transition: opacity 120ms ease !important;
 }
 
 .zen-sidebar-panel-button:hover .toolbarbutton-icon,
 #zen-sidebar-icons-wrapper toolbarbutton:hover .toolbarbutton-icon,
 #zen-sidebar-top-buttons toolbarbutton:hover .toolbarbutton-icon {
-  transform: scale(1.15) !important;
+  opacity: 1 !important;
 }
 
 .zen-sidebar-panel-button[open="true"],
@@ -394,14 +377,12 @@
 .zen-browser-tab {
   border-radius: var(--zc-r-md) !important;
   margin: 2px 6px !important;
-  transition:
-    background var(--zc-dur-mid) var(--zc-ease-snappy),
-    box-shadow var(--zc-dur-mid) var(--zc-ease-snappy) !important;
+  transition: background 200ms ease, box-shadow 200ms ease !important;
 }
 
 .zen-browser-tab:not([selected]):hover {
-  background: var(--zc-glass-hover) !important;
-  box-shadow: var(--zc-shadow-sm) !important;
+  background: rgba(255,255,255,0.065) !important;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.40) !important;
 }
 
 .zen-browser-tab[selected="true"] {
@@ -415,7 +396,6 @@
 #sidebar-box {
   background: var(--zc-bg-1) !important;
   border-right: 1px solid var(--zc-border) !important;
-  min-width: 0 !important;
 }
 
 #sidebar-header {
@@ -429,52 +409,6 @@
   text-transform: uppercase !important;
 }
 
-/* ──────────────────────────────────────────────
-   § 7  CONTEXT MENUS
-   ────────────────────────────────────────────── */
-menupopup,
-panel[type="arrow"] {
-  --arrowpanel-background: var(--zc-bg-2) !important;
-  --arrowpanel-border-color: var(--zc-border) !important;
-  background: var(--zc-bg-2) !important;
-  border: 1px solid var(--zc-border) !important;
-  border-radius: var(--zc-r-lg) !important;
-  padding: 5px !important;
-  box-shadow: var(--zc-shadow-lg), 0 0 0 1px var(--zc-border) !important;
-  backdrop-filter: none !important;
-  -moz-appearance: none !important;
-  overflow: hidden !important;
-  animation: zc-menu-in var(--zc-dur-mid) var(--zc-ease-out) both !important;
-}
-
-@keyframes zc-menu-in {
-  from { opacity: 0; transform: scale(0.97) translateY(-4px); }
-  to   { opacity: 1; transform: scale(1)    translateY(0);    }
-}
-
-menuitem {
-  border-radius: var(--zc-r-sm) !important;
-  padding: 6px 10px !important;
-  color: var(--zc-text-2) !important;
-  font-size: 12.5px !important;
-  transition:
-    background var(--zc-dur-fast) var(--zc-ease-snappy),
-    color      var(--zc-dur-fast) var(--zc-ease-snappy) !important;
-}
-
-menuitem:hover {
-  background: var(--zc-glass-hover) !important;
-  color: var(--zc-text-1) !important;
-}
-
-menuitem[disabled="true"] {
-  opacity: 0.35 !important;
-}
-
-menuseparator {
-  border-color: var(--zc-border) !important;
-  margin: 4px 8px !important;
-}
 
 /* ──────────────────────────────────────────────
    § 8  SCROLLBARS
@@ -576,22 +510,20 @@ toolbarbutton.bookmark-item:hover {
 #identity-box {
   border-radius: var(--zc-r-sm) !important;
   padding: 3px 6px !important;
-  transition:
-    background var(--zc-dur-fast) var(--zc-ease-snappy),
-    transform  var(--zc-dur-fast) var(--zc-ease-spring) !important;
+  transition: background 120ms ease !important;
 }
 
 #identity-box:hover {
-  background: var(--zc-glass-hover) !important;
+  background: rgba(255,255,255,0.065) !important;
 }
 
-/* HTTPS lock icon */
 #identity-icon {
-  transition: transform var(--zc-dur-mid) var(--zc-ease-spring) !important;
+  opacity: 0.65;
+  transition: opacity 120ms ease !important;
 }
 
 #identity-box:hover #identity-icon {
-  transform: scale(1.12) !important;
+  opacity: 1 !important;
 }
 
 /* ──────────────────────────────────────────────
@@ -600,24 +532,17 @@ toolbarbutton.bookmark-item:hover {
 #pageActionButton,
 .webextension-browser-action {
   border-radius: var(--zc-r-sm) !important;
-  transition:
-    background  var(--zc-dur-fast) var(--zc-ease-snappy),
-    transform   var(--zc-dur-fast) var(--zc-ease-spring) !important;
+  transition: background 120ms ease !important;
 }
 
 #pageActionButton:hover,
 .webextension-browser-action:hover {
-  background: var(--zc-glass-hover) !important;
-  transform: scale(1.08) !important;
+  background: rgba(255,255,255,0.065) !important;
 }
 
 /* ──────────────────────────────────────────────
    § 14  TAB PINNING — minimalist dot indicator
    ────────────────────────────────────────────── */
-.tabbrowser-tab[pinned] .tab-content {
-  padding: 4px 7px !important;
-}
-
 .tabbrowser-tab[pinned][selected="true"] .tab-content::after {
   content: "";
   position: absolute;
