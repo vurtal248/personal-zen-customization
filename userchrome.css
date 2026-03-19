@@ -208,7 +208,7 @@
    ────────────────────────────────────────────── */
 #TabsToolbar {
   background: var(--zc-bg-1) !important;
-  padding: 2px 4px !important;
+  padding: 4px 6px !important;
   border-bottom: 1px solid var(--zc-border) !important;
 }
 
@@ -232,20 +232,18 @@
 
 /* Individual tab */
 .tabbrowser-tab {
-  margin: 1px 2px !important;
+  margin: 2px 2px !important;
   padding: 0 !important;
   border-radius: var(--zc-r-md) !important;
   transition:
     background  var(--zc-dur-mid) var(--zc-ease-snappy),
     box-shadow  var(--zc-dur-mid) var(--zc-ease-snappy),
     transform   var(--zc-dur-mid) var(--zc-ease-spring) !important;
-  min-height: 26px !important;
-  max-height: 28px !important;
 }
 
 .tab-content {
   border-radius: var(--zc-r-md) !important;
-  padding: 2px 8px !important;
+  padding: 4px 10px !important;
 }
 
 /* Idle tab */
@@ -291,7 +289,7 @@
 /* Tab label */
 .tab-label {
   color: var(--zc-text-2) !important;
-  font-size: 11px !important;
+  font-size: 12.5px !important;
   font-weight: 450 !important;
   letter-spacing: 0.01em !important;
   transition: color var(--zc-dur-fast) var(--zc-ease-snappy) !important;
