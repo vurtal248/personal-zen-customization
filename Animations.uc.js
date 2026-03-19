@@ -5,8 +5,8 @@
 // @description    JS
 // @compatibility  Firefox 100+
 // ==/UserScript==
- 
-(function InjectFunction() {
+
+(function ObsidianGlass() {
  
   const STYLE_ID = "obsidian-glass-anim";
   if (!document.getElementById(STYLE_ID)) {
