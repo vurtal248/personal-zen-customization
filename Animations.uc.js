@@ -14,16 +14,40 @@
     style.id = STYLE_ID;
     style.textContent = `
       @keyframes og-tab-delete {
-        0%   { opacity: 1;   transform: scaleY(1)    translateX(0);   }
-        30%  { opacity: 0.8; transform: scaleY(1.05) translateX(4px); }
-        100% { opacity: 0;   transform: scaleY(0)    translateX(12px);}
+        /*
+          0–8%:   Tiny anticipation — tab breathes in slightly,
+                  like it's winding up before the exit.
+          8–100%: Swift slide left. translateX drives the exit,
+                  scaleX compresses it as it gains speed (squash),
+                  scaleY breathes out (stretch), blur builds as it
+                  accelerates (motion blur illusion), opacity lags
+                  behind the transform so the shape is still readable
+                  for the first half, then snaps out.
+        */
+        0%   {
+          opacity: 1;
+          transform: translateX(0)      scaleX(1)    scaleY(1);
+          filter: blur(0px);
+        }
+        8%   {
+          opacity: 1;
+          transform: translateX(3px)    scaleX(1.04) scaleY(0.97);
+          filter: blur(0px);
+        }
+        100% {
+          opacity: 0;
+          transform: translateX(-110%)  scaleX(0.5)  scaleY(0.85);
+          filter: blur(6px);
+        }
       }
+ 
       .og-tab-dying {
         position: fixed !important;
         pointer-events: none !important;
         z-index: 99999 !important;
-        transform-origin: center left !important;
-        animation: og-tab-delete 240ms cubic-bezier(0.4, 0, 1, 1) forwards !important;
+        transform-origin: left center !important;
+        /* Custom cubic-bezier: slow anticipation, explosive mid, graceful tail */
+        animation: og-tab-delete 380ms cubic-bezier(0.36, 0, 0.1, 1) forwards !important;
       }
     `;
     document.head.appendChild(style);
@@ -36,7 +60,6 @@
     const rect = tab.getBoundingClientRect();
     if (rect.width === 0 && rect.height === 0) return;
  
-    // Clone the tab and position it exactly over the original
     const clone = tab.cloneNode(true);
     clone.className = "";
     clone.classList.add("og-tab-dying");
@@ -44,20 +67,17 @@
     clone.style.top    = `${rect.top}px`;
     clone.style.width  = `${rect.width}px`;
     clone.style.height = `${rect.height}px`;
+    clone.style.margin = "0";
  
     document.documentElement.appendChild(clone);
  
-    // Destroy the clone once the animation finishes
     clone.addEventListener("animationend", () => clone.remove(), { once: true });
- 
-    // Safety fallback in case animationend never fires
-    setTimeout(() => clone.remove(), 400);
+    setTimeout(() => clone.remove(), 600);
   }
  
   function init() {
     if (window.__ogAnimInit) return;
     window.__ogAnimInit = true;
- 
     gBrowser.tabContainer.addEventListener("TabClose", onTabClose);
   }
  
