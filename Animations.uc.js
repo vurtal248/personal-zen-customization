@@ -29,15 +29,20 @@
           transform: translateX(0)      scaleX(1)    scaleY(1);
           filter: blur(0px);
         }
-        8%   {
+        10%  {
           opacity: 1;
-          transform: translateX(3px)    scaleX(1.04) scaleY(0.97);
+          transform: translateX(3px)    scaleX(1.03) scaleY(0.98);
           filter: blur(0px);
+        }
+        60%  {
+          opacity: 0.6;
+          transform: translateX(-60%)   scaleX(0.85) scaleY(0.94);
+          filter: blur(2px);
         }
         100% {
           opacity: 0;
-          transform: translateX(-110%)  scaleX(0.5)  scaleY(0.85);
-          filter: blur(6px);
+          transform: translateX(-115%)  scaleX(0.7)  scaleY(0.88);
+          filter: blur(5px);
         }
       }
  
@@ -46,8 +51,7 @@
         pointer-events: none !important;
         z-index: 99999 !important;
         transform-origin: left center !important;
-        /* Custom cubic-bezier: slow anticipation, explosive mid, graceful tail */
-        animation: og-tab-delete 380ms cubic-bezier(0.36, 0, 0.1, 1) forwards !important;
+        animation: og-tab-delete 580ms cubic-bezier(0.25, 0, 0.15, 1) forwards !important;
       }
     `;
     document.head.appendChild(style);
@@ -72,7 +76,7 @@
     document.documentElement.appendChild(clone);
  
     clone.addEventListener("animationend", () => clone.remove(), { once: true });
-    setTimeout(() => clone.remove(), 600);
+    setTimeout(() => clone.remove(), 800);
   }
  
   function init() {
