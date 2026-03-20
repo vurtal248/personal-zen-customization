@@ -8,117 +8,230 @@
 
 (function InjectScript() {
  
+  // ─── Inject base styles ────────────────────────────────────────
   const STYLE_ID = "obsidian-glass-anim";
   if (!document.getElementById(STYLE_ID)) {
     const style = document.createElement("style");
     style.id = STYLE_ID;
     style.textContent = `
- 
-      /* ─── Main tab exit ─────────────────────────────
-         Three-beat choreography:
-           0–8%   Inhale — tiny scale up, tab "notices" it's closing
-           8–22%  Hold — light sweep fires during this window
-           22–100% Exit — accelerating slide left, blur builds,
-                          opacity holds until 65% then snaps out
-      ──────────────────────────────────────────────── */
-      @keyframes og-tab-exit {
-        0% {
-          opacity: 1;
-          transform: translateX(0) scaleX(1) scaleY(1);
-          filter: blur(0px);
-        }
-        8% {
-          opacity: 1;
-          transform: translateX(2px) scaleX(1.02) scaleY(1.015);
-          filter: blur(0px);
-        }
-        22% {
-          opacity: 1;
-          transform: translateX(-4px) scaleX(0.99) scaleY(1);
-          filter: blur(0px);
-        }
-        65% {
-          opacity: 0.85;
-          transform: translateX(-72%) scaleX(0.88) scaleY(0.96);
-          filter: blur(3px);
-        }
-        100% {
-          opacity: 0;
-          transform: translateX(-118%) scaleX(0.72) scaleY(0.91);
-          filter: blur(7px);
-        }
-      }
- 
-      /* ─── Shine streak ───────────────────────────────
-         A narrow white gradient sweeps left → right across
-         the tab surface in the first 320ms, simulating
-         light catching a glass panel as it starts moving.
-      ──────────────────────────────────────────────── */
-      @keyframes og-shine-sweep {
-        0%   { transform: translateX(-120%) skewX(-18deg); opacity: 0;   }
-        15%  { opacity: 0.55; }
-        55%  { opacity: 0.35; }
-        100% { transform: translateX(220%)  skewX(-18deg); opacity: 0;   }
-      }
- 
-      .og-tab-dying {
+      .og-clone-wrap {
         position: fixed !important;
         pointer-events: none !important;
         z-index: 99999 !important;
-        transform-origin: left center !important;
         overflow: hidden !important;
         border-radius: 6px !important;
-        animation: og-tab-exit 620ms cubic-bezier(0.22, 0, 0.12, 1) forwards !important;
+        will-change: transform, opacity !important;
       }
- 
-      .og-tab-shine {
+      .og-clone-ghost {
+        position: fixed !important;
+        pointer-events: none !important;
+        z-index: 99998 !important;
+        overflow: hidden !important;
+        border-radius: 6px !important;
+        will-change: transform, opacity !important;
+        filter: blur(4px) !important;
+      }
+      .og-shine {
         position: absolute !important;
-        top: 0 !important;
-        left: 0 !important;
-        width: 40% !important;
-        height: 100% !important;
+        inset: 0 !important;
         background: linear-gradient(
-          105deg,
-          transparent 0%,
-          rgba(255,255,255,0.18) 40%,
-          rgba(255,255,255,0.32) 50%,
-          rgba(255,255,255,0.18) 60%,
-          transparent 100%
+          108deg,
+          transparent   0%,
+          rgba(255,255,255,0.0)  35%,
+          rgba(255,255,255,0.28) 50%,
+          rgba(255,255,255,0.0)  65%,
+          transparent   100%
         ) !important;
         pointer-events: none !important;
-        animation: og-shine-sweep 320ms cubic-bezier(0.4, 0, 0.6, 1) forwards !important;
-        animation-delay: 30ms !important;
+        will-change: transform, opacity !important;
       }
     `;
     document.head.appendChild(style);
   }
  
+  // ─── Spring integrator ─────────────────────────────────────────
+  // Solves a damped harmonic oscillator per frame.
+  // stiffness / damping tune the feel — lower stiffness = floatier.
+  function createSpring({ stiffness = 180, damping = 26, mass = 1 } = {}) {
+    return {
+      pos: 0,      // current value (0 = start, 1 = target)
+      vel: 0,      // current velocity
+      target: 1,
+      stiffness,
+      damping,
+      mass,
+      // Step the spring by `dt` seconds. Returns current pos.
+      step(dt) {
+        const F = -this.stiffness * (this.pos - this.target)
+                  - this.damping * this.vel;
+        const acc = F / this.mass;
+        this.vel += acc * dt;
+        this.pos += this.vel * dt;
+        return this.pos;
+      },
+      // True when motion has effectively stopped
+      isSettled() {
+        return Math.abs(this.pos - this.target) < 0.001
+            && Math.abs(this.vel) < 0.001;
+      },
+    };
+  }
+ 
+  // ─── Easing helpers ───────────────────────────────────────────
+  // Used for non-spring channels (opacity, blur, shine)
+  function easeInExpo(t) {
+    return t === 0 ? 0 : Math.pow(2, 10 * t - 10);
+  }
+  function easeOutQuart(t) {
+    return 1 - Math.pow(1 - t, 4);
+  }
+  function lerp(a, b, t) {
+    return a + (b - a) * t;
+  }
+  function clamp(v, lo, hi) {
+    return Math.max(lo, Math.min(hi, v));
+  }
+ 
+  // ─── Core animation ───────────────────────────────────────────
+  function animateTabClose(tab) {
+    const rect = tab.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) return;
+ 
+    const W = rect.width;
+    const H = rect.height;
+ 
+    // ── Main clone ──
+    const wrap = tab.cloneNode(true);
+    wrap.className = "";
+    wrap.classList.add("og-clone-wrap");
+    Object.assign(wrap.style, {
+      left:   `${rect.left}px`,
+      top:    `${rect.top}px`,
+      width:  `${W}px`,
+      height: `${H}px`,
+      margin: "0",
+    });
+ 
+    // ── Shine overlay ──
+    const shine = document.createElement("div");
+    shine.classList.add("og-shine");
+    wrap.appendChild(shine);
+ 
+    // ── Ghost clone (lags behind main, blurred) ──
+    const ghost = tab.cloneNode(true);
+    ghost.className = "";
+    ghost.classList.add("og-clone-ghost");
+    Object.assign(ghost.style, {
+      left:   `${rect.left}px`,
+      top:    `${rect.top}px`,
+      width:  `${W}px`,
+      height: `${H}px`,
+      margin: "0",
+      opacity: "0.35",
+    });
+ 
+    document.documentElement.appendChild(ghost);
+    document.documentElement.appendChild(wrap);
+ 
+    // ── Spring — drives horizontal travel (0 → −(W * 1.15)) ──
+    // High damping = no bounce, just a smooth deceleration curve
+    const xSpring = createSpring({ stiffness: 140, damping: 22, mass: 1 });
+    xSpring.pos    = 0;
+    xSpring.target = 0; // we'll drive it manually below
+ 
+    const TOTAL_TRAVEL = -(W * 1.15); // px, exits just past its own width
+    const DURATION_MS  = 680;         // wall-clock budget
+ 
+    let startTime = null;
+    let lastTime  = null;
+ 
+    // Anticipation: tab breathes in for first 60ms before exiting
+    const ANTICIPATION_MS = 60;
+    const ANTICIPATION_PX = 4; // nudge right before sweeping left
+ 
+    function frame(now) {
+      if (!startTime) startTime = lastTime = now;
+      const elapsed = now - startTime;
+      const dt = Math.min((now - lastTime) / 1000, 0.05); // seconds, capped at 50ms
+      lastTime = now;
+ 
+      // ── Progress (0 → 1 over DURATION_MS) ──
+      const rawP = clamp(elapsed / DURATION_MS, 0, 1);
+ 
+      // ── Anticipation phase ──
+      const anticipationP = clamp(elapsed / ANTICIPATION_MS, 0, 1);
+      const anticipationX = Math.sin(anticipationP * Math.PI) * ANTICIPATION_PX;
+ 
+      // ── Exit phase (starts after anticipation) ──
+      const exitP = clamp((elapsed - ANTICIPATION_MS) / (DURATION_MS - ANTICIPATION_MS), 0, 1);
+ 
+      // Spring drives translateX — spring target ramps with easeInExpo
+      // so it starts slow and builds, matching spring's natural feel
+      const springTarget = easeInExpo(exitP); // 0 → 1
+      xSpring.target = springTarget;
+      const springVal = xSpring.step(dt);
+      const translateX = anticipationX + springVal * TOTAL_TRAVEL;
+ 
+      // ── ScaleX: compresses gently, held back vs translateX ──
+      const scaleXP = clamp((elapsed - ANTICIPATION_MS - 40) / (DURATION_MS - ANTICIPATION_MS - 40), 0, 1);
+      const scaleX  = lerp(1, 0.78, easeOutQuart(scaleXP));
+ 
+      // ── ScaleY: subtle vertical compression, lags even more ──
+      const scaleYP = clamp((elapsed - ANTICIPATION_MS - 80) / (DURATION_MS - ANTICIPATION_MS - 80), 0, 1);
+      const scaleY  = lerp(1, 0.92, easeOutQuart(scaleYP));
+ 
+      // ── Opacity: stays full until 60%, then rapid fade ──
+      const opacityP = clamp((rawP - 0.60) / 0.40, 0, 1);
+      const opacity  = lerp(1, 0, easeInExpo(opacityP));
+ 
+      // ── Motion blur: builds as speed increases ──
+      const blurPx = lerp(0, 8, easeInExpo(exitP));
+ 
+      // ── Shine: sweeps left→right in first 300ms ──
+      const shineP   = clamp(elapsed / 300, 0, 1);
+      const shineX   = lerp(-110, 200, easeOutQuart(shineP));
+      const shineOp  = shineP < 0.5
+        ? lerp(0, 0.6, shineP / 0.5)
+        : lerp(0.6, 0, (shineP - 0.5) / 0.5);
+ 
+      // ── Ghost lags 80ms behind main ──
+      const ghostElapsed = Math.max(0, elapsed - 80);
+      const ghostExitP   = clamp((ghostElapsed - ANTICIPATION_MS) / (DURATION_MS - ANTICIPATION_MS), 0, 1);
+      const ghostX       = lerp(0, TOTAL_TRAVEL * 0.85, easeInExpo(ghostExitP));
+      const ghostOpacity = lerp(0.35, 0, easeOutQuart(clamp((ghostElapsed / DURATION_MS - 0.3) / 0.7, 0, 1)));
+ 
+      // ── Apply to main clone ──
+      wrap.style.transform = `translateX(${translateX}px) scaleX(${scaleX}) scaleY(${scaleY})`;
+      wrap.style.opacity   = opacity;
+      wrap.style.filter    = `blur(${blurPx.toFixed(2)}px)`;
+      wrap.style.transformOrigin = "left center";
+ 
+      // ── Apply to shine ──
+      shine.style.transform = `translateX(${shineX.toFixed(1)}%) skewX(-18deg)`;
+      shine.style.opacity   = shineOp;
+ 
+      // ── Apply to ghost ──
+      ghost.style.transform = `translateX(${ghostX.toFixed(1)}px)`;
+      ghost.style.opacity   = ghostOpacity;
+      ghost.style.transformOrigin = "left center";
+ 
+      // ── Continue or clean up ──
+      if (rawP < 1) {
+        requestAnimationFrame(frame);
+      } else {
+        wrap.remove();
+        ghost.remove();
+      }
+    }
+ 
+    requestAnimationFrame(frame);
+  }
+ 
+  // ─── Hook into TabClose ────────────────────────────────────────
   function onTabClose(event) {
     const tab = event.target;
     if (!tab?.isConnected) return;
- 
-    const rect = tab.getBoundingClientRect();
-    if (rect.width === 0 && rect.height === 0) return;
- 
-    // Clone the tab
-    const clone = tab.cloneNode(true);
-    clone.className = "";
-    clone.classList.add("og-tab-dying");
-    clone.style.left   = `${rect.left}px`;
-    clone.style.top    = `${rect.top}px`;
-    clone.style.width  = `${rect.width}px`;
-    clone.style.height = `${rect.height}px`;
-    clone.style.margin = "0";
- 
-    // Inject shine streak as a child of the clone
-    const shine = document.createElement("div");
-    shine.classList.add("og-tab-shine");
-    clone.appendChild(shine);
- 
-    document.documentElement.appendChild(clone);
- 
-    clone.addEventListener("animationend", () => clone.remove(), { once: true });
-    setTimeout(() => clone.remove(), 900);
+    animateTabClose(tab);
   }
  
   function init() {
