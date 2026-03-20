@@ -37,20 +37,21 @@
  
       /* ── Tab expand animation ───────────────────── */
       /*
-        We animate .tab-content — the actual visible pill
-        inside the tab — not the outer wrapper which has
-        invisible extra DOM space around it.
+        No background-color — it bleeds full sidebar width.
+        Instead: a left accent border slides in, and the
+        label nudges right via padding-inline-start.
+        Both effects are visually contained to the tab row.
       */
-      .og-tab-content-base {
+      .og-tab-base {
+        border-left: 2px solid transparent !important;
         transition:
-          padding-top    220ms cubic-bezier(0.34, 1.56, 0.64, 1),
-          padding-bottom 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
-          background-color 180ms ease !important;
+          border-color      200ms ease,
+          padding-inline-start 200ms cubic-bezier(0.34, 1.56, 0.64, 1),
+          opacity           150ms ease !important;
       }
-      .og-tab-content-hover {
-        padding-top:    8px !important;
-        padding-bottom: 8px !important;
-        background-color: rgba(255, 255, 255, 0.06) !important;
+      .og-tab-hover {
+        border-color: rgba(124, 106, 245, 0.7) !important;
+        padding-inline-start: 6px !important;
       }
     `;
     document.head.appendChild(style);
@@ -72,13 +73,10 @@
   function animateTab(el) {
     if (el._ogTabBound) return;
     el._ogTabBound = true;
+    el.classList.add("og-tab-base");
  
-    // Target the inner visual pill, not the outer wrapper
-    const inner = el.querySelector(".tab-content") || el;
-    inner.classList.add("og-tab-content-base");
- 
-    el.addEventListener("mouseenter", () => inner.classList.add("og-tab-content-hover"));
-    el.addEventListener("mouseleave", () => inner.classList.remove("og-tab-content-hover"));
+    el.addEventListener("mouseenter", () => el.classList.add("og-tab-hover"));
+    el.addEventListener("mouseleave", () => el.classList.remove("og-tab-hover"));
   }
  
   /* ── Selectors ───────────────────────────────────── */
