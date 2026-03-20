@@ -37,24 +37,19 @@
  
       /* ── Tab expand animation ───────────────────── */
       /*
-        Zen's sidebar tabs are vertical strips.
-        We animate padding-top + padding-bottom to
-        smoothly expand the tab height on hover, then
-        contract when the cursor leaves.
-        
-        .og-tab-base  — always present, defines the transition
-        .og-tab-hover — added on mouseenter, removed on mouseleave
+        We animate .tab-content — the actual visible pill
+        inside the tab — not the outer wrapper which has
+        invisible extra DOM space around it.
       */
-      .og-tab-base {
+      .og-tab-content-base {
         transition:
           padding-top    220ms cubic-bezier(0.34, 1.56, 0.64, 1),
           padding-bottom 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
           background-color 180ms ease !important;
-        overflow: hidden;
       }
-      .og-tab-hover {
-        padding-top:    10px !important;
-        padding-bottom: 10px !important;
+      .og-tab-content-hover {
+        padding-top:    8px !important;
+        padding-bottom: 8px !important;
         background-color: rgba(255, 255, 255, 0.06) !important;
       }
     `;
@@ -77,10 +72,13 @@
   function animateTab(el) {
     if (el._ogTabBound) return;
     el._ogTabBound = true;
-    el.classList.add("og-tab-base");
  
-    el.addEventListener("mouseenter", () => el.classList.add("og-tab-hover"));
-    el.addEventListener("mouseleave", () => el.classList.remove("og-tab-hover"));
+    // Target the inner visual pill, not the outer wrapper
+    const inner = el.querySelector(".tab-content") || el;
+    inner.classList.add("og-tab-content-base");
+ 
+    el.addEventListener("mouseenter", () => inner.classList.add("og-tab-content-hover"));
+    el.addEventListener("mouseleave", () => inner.classList.remove("og-tab-content-hover"));
   }
  
   /* ── Selectors ───────────────────────────────────── */
