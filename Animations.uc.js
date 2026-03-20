@@ -14,16 +14,6 @@
     style.id = STYLE_ID;
     style.textContent = `
       @keyframes og-tab-delete {
-        /*
-          0–8%:   Tiny anticipation — tab breathes in slightly,
-                  like it's winding up before the exit.
-          8–100%: Swift slide left. translateX drives the exit,
-                  scaleX compresses it as it gains speed (squash),
-                  scaleY breathes out (stretch), blur builds as it
-                  accelerates (motion blur illusion), opacity lags
-                  behind the transform so the shape is still readable
-                  for the first half, then snaps out.
-        */
         0%   {
           opacity: 1;
           transform: translateX(0)      scaleX(1)    scaleY(1);
