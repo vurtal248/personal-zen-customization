@@ -86,6 +86,42 @@
   function lerp(a, b, t)   { return a + (b - a) * t; }
   function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
  
+  // ── Spacer collapse ─────────────────────────────────────────────
+  // After the tab exit finishes, springs the spacer height 
+  // from H → 0 so sibling tabs glide smoothly into the gap.
+  function collapseSpacer(spacer, fromH) {
+    // Soft spring: low stiffness so the slide feels unhurried,
+    // damping high enough that there's no bounce.
+    const spring = createSpring({ stiffness: 120, damping: 20 });
+    spring.pos    = fromH;
+    spring.target = 0;
+ 
+    let last = null;
+ 
+    function frame(now) {
+      const dt = last ? Math.min((now - last) / 1000, 0.05) : 0.016;
+      last = now;
+ 
+      // Manually step: spring is pos→target (0), so invert direction
+      const F   = -spring.stiffness * (spring.pos - spring.target) - spring.damping * spring.vel;
+      spring.vel += F * dt;
+      spring.pos += spring.vel * dt;
+ 
+      const h = Math.max(0, spring.pos);
+      spacer.style.height    = `${h.toFixed(2)}px`;
+      spacer.style.minHeight = `${h.toFixed(2)}px`;
+ 
+      const settled = Math.abs(spring.pos) < 0.5 && Math.abs(spring.vel) < 0.5;
+      if (!settled) {
+        requestAnimationFrame(frame);
+      } else {
+        spacer.remove();
+      }
+    }
+ 
+    requestAnimationFrame(frame);
+  }
+ 
   // ── Core ────────────────────────────────────────────────────────
   function animateTabClose(tab) {
     // Snapshot rect BEFORE tab is removed from DOM
@@ -201,9 +237,9 @@
       } else {
         mask.remove();
         ghostMask.remove();
-        // Remove spacer now — this triggers the native tab reflow,
-        // so siblings slide up only after the exit animation is done.
-        spacer.remove();
+        // Animate the spacer height from H → 0 with a spring so
+        // sibling tabs glide into the gap rather than jumping.
+        collapseSpacer(spacer, H);
       }
     }
  
