@@ -95,6 +95,20 @@
     const W = rect.width;
     const H = rect.height;
  
+    // Hold the gap: insert a spacer where the tab was so sibling
+    // tabs cannot shift up until the animation finishes.
+    const spacer = document.createElement("div");
+    Object.assign(spacer.style, {
+      width:         `${W}px`,
+      height:        `${H}px`,
+      minHeight:     `${H}px`,
+      flexShrink:    "0",
+      pointerEvents: "none",
+      visibility:    "hidden",
+      display:       "block",
+    });
+    tab.parentNode?.insertBefore(spacer, tab.nextSibling);
+ 
     // Ghost mask + clone
     const ghostMask = document.createElement("div");
     ghostMask.classList.add("og-ghost-mask");
@@ -187,6 +201,9 @@
       } else {
         mask.remove();
         ghostMask.remove();
+        // Remove spacer now — this triggers the native tab reflow,
+        // so siblings slide up only after the exit animation is done.
+        spacer.remove();
       }
     }
  
