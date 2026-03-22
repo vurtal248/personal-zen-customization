@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name           Animations
-// @version        1.3.3
+// @version        1.3.4
 // @author         vur
 // @description    JS
 // @compatibility  Firefox 100+
@@ -12,22 +12,22 @@
   const STYLE_ID = "obsidian-glass-anim";
 
   const TAB_CLOSE = {
-    durationMs: 860,
-    safetyMs: 1450,
-    antiMs: 90,
-    antiPx: 1.7,
-    ghostDelayMs: 110,
-    shineDurationMs: 430,
-    opacityStart: 0.46,
-    opacitySpan: 0.54,
-    ghostTravelFactor: 0.9,
-    blurMaxPx: 11,
-    travelFactor: 0.99,
-    ghostOpacityStart: 0.2,
-    shinePeakOpacity: 0.42,
-    shineSkewDeg: -14,
-    spacerRemoveSafetyMs: 950,
-    settledPx: 0.35,
+    durationMs: 780,
+    safetyMs: 1350,
+    antiMs: 68,
+    antiPx: 2.4,
+    ghostDelayMs: 84,
+    shineDurationMs: 320,
+    opacityStart: 0.56,
+    opacitySpan: 0.44,
+    ghostTravelFactor: 0.84,
+    blurMaxPx: 8.5,
+    travelFactor: 1.03,
+    ghostOpacityStart: 0.26,
+    shinePeakOpacity: 0.5,
+    shineSkewDeg: -17,
+    spacerRemoveSafetyMs: 900,
+    settledPx: 0.38,
   };
 
   const SEARCH_OPEN = {
@@ -141,7 +141,6 @@
   const easeInExpo = t => t === 0 ? 0 : Math.pow(2, 10 * t - 10);
   const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
   const easeInOutSine = t => -(Math.cos(Math.PI * t) - 1) / 2;
-  const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
   const lerp = (a, b, t) => a + (b - a) * t;
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -295,7 +294,7 @@
       cleanup();
     }, TAB_CLOSE.safetyMs);
 
-    const xSpring = createSpring({ stiffness: 104, damping: 18 });
+    const xSpring = createSpring({ stiffness: 132, damping: 21 });
     const travel = -(W * TAB_CLOSE.travelFactor);
 
     let start = null;
@@ -335,27 +334,25 @@
       const antP = clamp(elapsed / TAB_CLOSE.antiMs, 0, 1);
       const antX = Math.sin(antP * Math.PI) * TAB_CLOSE.antiPx;
       const exitP = clamp((elapsed - TAB_CLOSE.antiMs) / (TAB_CLOSE.durationMs - TAB_CLOSE.antiMs), 0, 1);
-      const exitEase = easeInOutSine(exitP);
 
-      xSpring.target = easeOutCubic(exitEase);
+      xSpring.target = easeInExpo(exitP);
       const tx = antX + xSpring.step(dt) * travel;
 
       const opP = clamp((rawP - TAB_CLOSE.opacityStart) / TAB_CLOSE.opacitySpan, 0, 1);
-      const opacity = lerp(1, 0, easeInOutSine(opP));
-      const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeInOutSine(opP));
+      const opacity = lerp(1, 0, easeInExpo(opP));
+      const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeInExpo(exitP));
 
       const shineP = clamp(elapsed / TAB_CLOSE.shineDurationMs, 0, 1);
-      const shineX = lerp(-102, 172, easeInOutSine(shineP));
+      const shineX = lerp(-112, 198, easeOutQuart(shineP));
       const shineOp = shineP < 0.5
-        ? lerp(0, TAB_CLOSE.shinePeakOpacity, easeInOutSine(shineP / 0.5))
-        : lerp(TAB_CLOSE.shinePeakOpacity, 0, easeInOutSine((shineP - 0.5) / 0.5));
+        ? lerp(0, TAB_CLOSE.shinePeakOpacity, shineP / 0.5)
+        : lerp(TAB_CLOSE.shinePeakOpacity, 0, (shineP - 0.5) / 0.5);
 
       const gElapsed = Math.max(0, elapsed - TAB_CLOSE.ghostDelayMs);
       const gExitP = clamp((gElapsed - TAB_CLOSE.antiMs) / (TAB_CLOSE.durationMs - TAB_CLOSE.antiMs), 0, 1);
-      const gEase = easeInOutSine(gExitP);
-      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, gEase);
-      const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeInOutSine(
-        clamp((gElapsed / TAB_CLOSE.durationMs - 0.14) / 0.86, 0, 1)
+      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeInExpo(gExitP));
+      const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeOutQuart(
+        clamp((gElapsed / TAB_CLOSE.durationMs - 0.24) / 0.76, 0, 1)
       ));
 
       clone.style.transform = `translateX(${tx.toFixed(2)}px)`;
