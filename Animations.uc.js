@@ -1,15 +1,58 @@
 // ==UserScript==
 // @name           Animations
-// @version        1.2.0
+// @version        1.3.0
 // @author         vur
 // @description    JS
 // @compatibility  Firefox 100+
 // ==/UserScript==
 
 (function InjectScript() {
- 
-  // ── Styles ──────────────────────────────────────────────────────
+  "use strict";
+
   const STYLE_ID = "obsidian-glass-anim";
+
+  const TAB_CLOSE = {
+    durationMs: 660,
+    safetyMs: 1200,
+    antiMs: 55,
+    antiPx: 3,
+    ghostDelayMs: 75,
+    shineDurationMs: 300,
+    opacityStart: 0.58,
+    opacitySpan: 0.42,
+    ghostTravelFactor: 0.82,
+    spacerRemoveSafetyMs: 800,
+    settledPx: 0.5,
+  };
+
+  const SEARCH_OPEN = {
+    fadeMs: 120,
+    safetyMs: 600,
+    startY: 18,
+    startScaleX: 0.88,
+    startScaleY: 0.72,
+    settleY: 0.08,
+    settleScale: 0.0005,
+  };
+
+  const SEARCH_CLOSE = {
+    durationMs: 320,
+    safetyMs: 500,
+    targetY: 22,
+    targetScaleX: 0.88,
+    targetScaleY: 0.65,
+    opacityHoldStart: 0.15,
+    opacityFadeSpan: 0.85,
+    settleY: 0.1,
+    settleScale: 0.0005,
+  };
+
+  const searchAnimationState = new WeakMap();
+  let searchObserver = null;
+  let tabCloseHandler = null;
+  let unloadHandler = null;
+
+  // ── Styles ──────────────────────────────────────────────────────
   if (!document.getElementById(STYLE_ID)) {
     const style = document.createElement("style");
     style.id = STYLE_ID;
@@ -66,14 +109,17 @@
     `;
     document.head.appendChild(style);
   }
- 
+
   // ── Spring integrator ───────────────────────────────────────────
   function createSpring({ stiffness = 140, damping = 22 } = {}) {
     return {
-      pos: 0, vel: 0, target: 0, stiffness, damping,
+      pos: 0,
+      vel: 0,
+      target: 0,
+      stiffness,
+      damping,
       step(dt) {
-        const F = -this.stiffness * (this.pos - this.target)
-                  - this.damping  * this.vel;
+        const F = -this.stiffness * (this.pos - this.target) - this.damping * this.vel;
         this.vel += F * dt;
         this.pos += this.vel * dt;
         return this.pos;
@@ -84,252 +130,326 @@
       },
     };
   }
- 
+
   // ── Easings ─────────────────────────────────────────────────────
-  const easeInExpo   = t => t === 0 ? 0 : Math.pow(2, 10 * t - 10);
+  const easeInExpo = t => t === 0 ? 0 : Math.pow(2, 10 * t - 10);
   const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
-  const lerp         = (a, b, t) => a + (b - a) * t;
-  const clamp        = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
- 
+  const lerp = (a, b, t) => a + (b - a) * t;
+  const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
+
+  function getSearchState(urlbar) {
+    let state = searchAnimationState.get(urlbar);
+    if (!state) {
+      state = {
+        mode: "idle",
+        rafId: 0,
+        safetyId: 0,
+      };
+      searchAnimationState.set(urlbar, state);
+    }
+    return state;
+  }
+
+  function resetUrlbarVisualState(urlbar) {
+    urlbar.style.transform = "";
+    urlbar.style.opacity = "";
+    urlbar.classList.remove("og-search-animating");
+  }
+
+  function stopSearchAnimation(urlbar, nextMode = "idle") {
+    const state = getSearchState(urlbar);
+    if (state.rafId) {
+      cancelAnimationFrame(state.rafId);
+      state.rafId = 0;
+    }
+    if (state.safetyId) {
+      clearTimeout(state.safetyId);
+      state.safetyId = 0;
+    }
+    state.mode = nextMode;
+    resetUrlbarVisualState(urlbar);
+  }
+
   // ── Spacer collapse ─────────────────────────────────────────────
   function collapseSpacer(spacer, fromH) {
-    const spring  = createSpring({ stiffness: 120, damping: 20 });
-    spring.pos    = fromH;
+    const spring = createSpring({ stiffness: 120, damping: 20 });
+    spring.pos = fromH;
     spring.target = 0;
- 
-    const safetyId = setTimeout(() => spacer.remove(), 800);
+
+    const safetyId = setTimeout(() => spacer.remove(), TAB_CLOSE.spacerRemoveSafetyMs);
     let last = null;
- 
-    function frame(now) {
-      const dt = last ? Math.min((now - last) / 1000, 0.05) : 0.016;
-      last = now;
-      spring.step(dt);
- 
-      const h = Math.max(0, spring.pos);
-      spacer.style.height    = `${h.toFixed(2)}px`;
-      spacer.style.minHeight = `${h.toFixed(2)}px`;
- 
-      if (!spring.settled(0.5)) {
-        requestAnimationFrame(frame);
-      } else {
-        clearTimeout(safetyId);
+    let rafId = 0;
+
+    function cleanup() {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+      clearTimeout(safetyId);
+      if (spacer.isConnected) {
         spacer.remove();
       }
     }
-    requestAnimationFrame(frame);
+
+    function frame(now) {
+      if (!spacer.isConnected) {
+        cleanup();
+        return;
+      }
+
+      const dt = last ? Math.min((now - last) / 1000, 0.05) : 0.016;
+      last = now;
+      spring.step(dt);
+
+      const h = Math.max(0, spring.pos);
+      spacer.style.height = `${h.toFixed(2)}px`;
+      spacer.style.minHeight = `${h.toFixed(2)}px`;
+
+      if (!spring.settled(TAB_CLOSE.settledPx)) {
+        rafId = requestAnimationFrame(frame);
+      } else {
+        cleanup();
+      }
+    }
+
+    rafId = requestAnimationFrame(frame);
   }
- 
+
+  function createAnimationClone(node, extraClass) {
+    const clone = node.cloneNode(true);
+    clone.removeAttribute("id");
+    clone.classList.add(extraClass);
+    return clone;
+  }
+
   // ── Tab deletion ────────────────────────────────────────────────
   function animateTabClose(tab) {
-    if (!tab?.isConnected) return;
- 
+    if (!tab?.isConnected || !tab.parentNode) return;
+
     const rect = tab.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) return;
- 
+
     const W = rect.width;
     const H = rect.height;
- 
+
     const spacer = document.createElement("div");
     Object.assign(spacer.style, {
-      width:         `${W}px`,
-      height:        `${H}px`,
-      minHeight:     `${H}px`,
-      flexShrink:    "0",
+      width: `${W}px`,
+      height: `${H}px`,
+      minHeight: `${H}px`,
+      flexShrink: "0",
       pointerEvents: "none",
-      visibility:    "hidden",
+      visibility: "hidden",
     });
-    tab.parentNode?.insertBefore(spacer, tab.nextSibling);
- 
+    tab.parentNode.insertBefore(spacer, tab.nextSibling);
+
     const ghostMask = document.createElement("div");
     ghostMask.classList.add("og-ghost-mask");
     Object.assign(ghostMask.style, {
-      left: `${rect.left}px`, top: `${rect.top}px`,
-      width: `${W}px`,        height: `${H}px`,
+      left: `${rect.left}px`,
+      top: `${rect.top}px`,
+      width: `${W}px`,
+      height: `${H}px`,
     });
-    const ghostClone = tab.cloneNode(true);
-    ghostClone.className = "";
-    ghostClone.classList.add("og-ghost");
+
+    const ghostClone = createAnimationClone(tab, "og-ghost");
     ghostMask.appendChild(ghostClone);
- 
+
     const mask = document.createElement("div");
     mask.classList.add("og-mask");
     Object.assign(mask.style, {
-      left: `${rect.left}px`, top: `${rect.top}px`,
-      width: `${W}px`,        height: `${H}px`,
+      left: `${rect.left}px`,
+      top: `${rect.top}px`,
+      width: `${W}px`,
+      height: `${H}px`,
     });
-    const clone = tab.cloneNode(true);
-    clone.className = "";
-    clone.classList.add("og-clone");
- 
+
+    const clone = createAnimationClone(tab, "og-clone");
+
     const shine = document.createElement("div");
     shine.classList.add("og-shine");
     clone.appendChild(shine);
     mask.appendChild(clone);
- 
+
     const mount = document.body ?? document.documentElement;
     mount.appendChild(ghostMask);
     mount.appendChild(mask);
- 
+
     const safetyId = setTimeout(() => {
       mask.remove();
       ghostMask.remove();
-      if (spacer.isConnected) collapseSpacer(spacer, H);
-    }, 1200);
- 
-    const xSpring  = createSpring({ stiffness: 140, damping: 22 });
-    const TRAVEL   = -(W * 1.05);
-    const DURATION = 660;
-    const ANT_MS   = 55;
-    const ANT_PX   = 3;
- 
-    let start = null, last = null;
- 
-    function frame(now) {
-      if (!start) { start = last = now; }
-      const elapsed = now - start;
-      const dt      = Math.min((now - last) / 1000, 0.05);
-      last = now;
- 
-      const rawP  = clamp(elapsed / DURATION, 0, 1);
-      const antP  = clamp(elapsed / ANT_MS, 0, 1);
-      const antX  = Math.sin(antP * Math.PI) * ANT_PX;
-      const exitP = clamp((elapsed - ANT_MS) / (DURATION - ANT_MS), 0, 1);
- 
-      xSpring.target = easeInExpo(exitP);
-      const tx = antX + xSpring.step(dt) * TRAVEL;
- 
-      const opP     = clamp((rawP - 0.58) / 0.42, 0, 1);
-      const opacity = lerp(1, 0, easeInExpo(opP));
-      const blurPx  = lerp(0, 8, easeInExpo(exitP));
- 
-      const shineP  = clamp(elapsed / 300, 0, 1);
-      const shineX  = lerp(-110, 200, easeOutQuart(shineP));
-      const shineOp = shineP < 0.5
-        ? lerp(0, 0.55,  shineP / 0.5)
-        : lerp(0.55, 0, (shineP - 0.5) / 0.5);
- 
-      const gElapsed = Math.max(0, elapsed - 75);
-      const gExitP   = clamp((gElapsed - ANT_MS) / (DURATION - ANT_MS), 0, 1);
-      const gTx      = lerp(0, TRAVEL * 0.82, easeInExpo(gExitP));
-      const gOp      = lerp(0.28, 0, easeOutQuart(
-        clamp((gElapsed / DURATION - 0.25) / 0.75, 0, 1)
-      ));
- 
-      clone.style.transform = `translateX(${tx.toFixed(2)}px)`;
-      clone.style.opacity   = opacity;
-      clone.style.filter    = `blur(${blurPx.toFixed(2)}px)`;
-      shine.style.transform = `translateX(${shineX.toFixed(1)}%) skewX(-18deg)`;
-      shine.style.opacity   = shineOp;
-      ghostClone.style.transform = `translateX(${gTx.toFixed(2)}px)`;
-      ghostClone.style.opacity   = gOp;
- 
-      if (rawP < 1) {
-        requestAnimationFrame(frame);
-      } else {
-        clearTimeout(safetyId);
-        mask.remove();
-        ghostMask.remove();
+      if (spacer.isConnected) {
+        collapseSpacer(spacer, H);
+      }
+    }, TAB_CLOSE.safetyMs);
+
+    const xSpring = createSpring({ stiffness: 140, damping: 22 });
+    const travel = -(W * 1.05);
+
+    let start = null;
+    let last = null;
+    let rafId = 0;
+
+    function cleanup() {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = 0;
+      }
+      clearTimeout(safetyId);
+      mask.remove();
+      ghostMask.remove();
+      if (spacer.isConnected) {
         collapseSpacer(spacer, H);
       }
     }
- 
-    requestAnimationFrame(frame);
+
+    function frame(now) {
+      if (!mask.isConnected || !ghostMask.isConnected) {
+        cleanup();
+        return;
+      }
+
+      if (!start) {
+        start = last = now;
+      }
+      const elapsed = now - start;
+      const dt = Math.min((now - last) / 1000, 0.05);
+      last = now;
+
+      const rawP = clamp(elapsed / TAB_CLOSE.durationMs, 0, 1);
+      const antP = clamp(elapsed / TAB_CLOSE.antiMs, 0, 1);
+      const antX = Math.sin(antP * Math.PI) * TAB_CLOSE.antiPx;
+      const exitP = clamp((elapsed - TAB_CLOSE.antiMs) / (TAB_CLOSE.durationMs - TAB_CLOSE.antiMs), 0, 1);
+
+      xSpring.target = easeInExpo(exitP);
+      const tx = antX + xSpring.step(dt) * travel;
+
+      const opP = clamp((rawP - TAB_CLOSE.opacityStart) / TAB_CLOSE.opacitySpan, 0, 1);
+      const opacity = lerp(1, 0, easeInExpo(opP));
+      const blurPx = lerp(0, 8, easeInExpo(exitP));
+
+      const shineP = clamp(elapsed / TAB_CLOSE.shineDurationMs, 0, 1);
+      const shineX = lerp(-110, 200, easeOutQuart(shineP));
+      const shineOp = shineP < 0.5
+        ? lerp(0, 0.55, shineP / 0.5)
+        : lerp(0.55, 0, (shineP - 0.5) / 0.5);
+
+      const gElapsed = Math.max(0, elapsed - TAB_CLOSE.ghostDelayMs);
+      const gExitP = clamp((gElapsed - TAB_CLOSE.antiMs) / (TAB_CLOSE.durationMs - TAB_CLOSE.antiMs), 0, 1);
+      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeInExpo(gExitP));
+      const gOp = lerp(0.28, 0, easeOutQuart(
+        clamp((gElapsed / TAB_CLOSE.durationMs - 0.25) / 0.75, 0, 1)
+      ));
+
+      clone.style.transform = `translateX(${tx.toFixed(2)}px)`;
+      clone.style.opacity = opacity;
+      clone.style.filter = `blur(${blurPx.toFixed(2)}px)`;
+      shine.style.transform = `translateX(${shineX.toFixed(1)}%) skewX(-18deg)`;
+      shine.style.opacity = shineOp;
+      ghostClone.style.transform = `translateX(${gTx.toFixed(2)}px)`;
+      ghostClone.style.opacity = gOp;
+
+      if (rawP < 1) {
+        rafId = requestAnimationFrame(frame);
+      } else {
+        cleanup();
+      }
+    }
+
+    rafId = requestAnimationFrame(frame);
   }
- 
+
   // ── Search bar entrance ─────────────────────────────────────────
   // Three independent springs so each axis settles at its own pace —
   // Y position arrives first, width expands a beat behind,
   // height fills in last. Reads as organic, not mechanical.
   function animateSearchOpen(urlbar) {
-    // Guard: don't double-animate if already running
-    if (urlbar._ogSearchAnimating) return;
-    urlbar._ogSearchAnimating = true;
+    const state = getSearchState(urlbar);
+    if (state.mode === "opening") return;
+
+    stopSearchAnimation(urlbar, "opening");
     urlbar.classList.add("og-search-animating");
- 
-    // Springs
-    // Y: slides up from 18px below — snappy spring
+
     const ySpring = createSpring({ stiffness: 320, damping: 28 });
-    ySpring.pos    = 18;
+    ySpring.pos = SEARCH_OPEN.startY;
     ySpring.target = 0;
- 
-    // ScaleX: expands from 0.88 — slightly softer
+
     const sxSpring = createSpring({ stiffness: 260, damping: 26 });
-    sxSpring.pos    = 0.88;
+    sxSpring.pos = SEARCH_OPEN.startScaleX;
     sxSpring.target = 1;
- 
-    // ScaleY: expands from 0.72 — softest, arrives last
-    // gives the "growing taller as it rises" read
+
     const sySpring = createSpring({ stiffness: 200, damping: 24 });
-    sySpring.pos    = 0.72;
+    sySpring.pos = SEARCH_OPEN.startScaleY;
     sySpring.target = 1;
- 
-    // Opacity: simple lerp over 120ms, not spring-driven
-    const FADE_MS  = 120;
-    let start = null, last = null;
- 
-    // Safety: hard-reset after 600ms
-    const safetyId = setTimeout(() => {
-      urlbar.style.transform = "";
-      urlbar.style.opacity   = "";
-      urlbar.classList.remove("og-search-animating");
-      urlbar._ogSearchAnimating = false;
-    }, 600);
- 
+
+    let start = null;
+    let last = null;
+
+    state.safetyId = setTimeout(() => {
+      resetUrlbarVisualState(urlbar);
+      state.mode = "idle";
+      state.safetyId = 0;
+      state.rafId = 0;
+    }, SEARCH_OPEN.safetyMs);
+
     function frame(now) {
-      if (!start) { start = last = now; }
+      if (!urlbar.isConnected) {
+        stopSearchAnimation(urlbar, "idle");
+        return;
+      }
+
+      if (!start) {
+        start = last = now;
+      }
       const elapsed = now - start;
-      const dt      = Math.min((now - last) / 1000, 0.05);
+      const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
- 
+
       ySpring.step(dt);
       sxSpring.step(dt);
       sySpring.step(dt);
- 
-      const opacity = Math.min(1, elapsed / FADE_MS);
- 
+
+      const opacity = Math.min(1, elapsed / SEARCH_OPEN.fadeMs);
+
       urlbar.style.transform = `
         translateY(${ySpring.pos.toFixed(3)}px)
         scaleX(${sxSpring.pos.toFixed(4)})
         scaleY(${sySpring.pos.toFixed(4)})
       `;
       urlbar.style.opacity = opacity.toFixed(3);
- 
-      const allSettled = ySpring.settled(0.08)
-                      && sxSpring.settled(0.0005)
-                      && sySpring.settled(0.0005);
- 
-      if (!allSettled) {
-        requestAnimationFrame(frame);
-      } else {
-        clearTimeout(safetyId);
-        // Clean up: remove inline styles so CSS takes over normally
-        urlbar.style.transform = "";
-        urlbar.style.opacity   = "";
-        urlbar.classList.remove("og-search-animating");
-        urlbar._ogSearchAnimating = false;
+
+      const allSettled = ySpring.settled(SEARCH_OPEN.settleY)
+                      && sxSpring.settled(SEARCH_OPEN.settleScale)
+                      && sySpring.settled(SEARCH_OPEN.settleScale);
+
+      if (!allSettled && state.mode === "opening") {
+        state.rafId = requestAnimationFrame(frame);
+      } else if (state.mode === "opening") {
+        stopSearchAnimation(urlbar, "idle");
       }
     }
- 
-    requestAnimationFrame(frame);
+
+    state.rafId = requestAnimationFrame(frame);
   }
- 
+
   // ── Search bar exit ─────────────────────────────────────────────
   // Clone the urlbar visually, position it fixed over the original,
   // animate the clone out, then discard it. This way Zen can
   // immediately hide the real urlbar without us fighting it.
   function animateSearchClose(urlbar) {
-    if (urlbar._ogSearchCloseAnimating) return;
-    urlbar._ogSearchCloseAnimating = true;
- 
+    const state = getSearchState(urlbar);
+    if (state.mode === "closing") return;
+
+    stopSearchAnimation(urlbar, "closing");
+
     const rect = urlbar.getBoundingClientRect();
     if (rect.width === 0 || rect.height === 0) {
-      urlbar._ogSearchCloseAnimating = false;
+      state.mode = "idle";
       return;
     }
- 
-    // Clone the bar at its current visual state
+
     const clone = urlbar.cloneNode(true);
-    clone.removeAttribute("id"); // avoid ID collisions
+    clone.removeAttribute("id");
     clone.style.cssText = `
       position: fixed !important;
       left: ${rect.left}px !important;
@@ -344,83 +464,105 @@
       overflow: hidden !important;
       border-radius: 10px !important;
     `;
- 
+
     const mount = document.body ?? document.documentElement;
     mount.appendChild(clone);
- 
-    // Three springs — exit personality is opposite of entrance:
-    // Y drops DOWN (positive), scaleY collapses first, scaleX last.
-    // Stiffer than entrance so the exit feels decisive, not lingering.
- 
-    // Y: drops 22px downward — fast initial pull
+
     const ySpring = createSpring({ stiffness: 280, damping: 30 });
-    ySpring.pos    = 0;
-    ySpring.target = 22;
- 
-    // ScaleY: collapses from 1 → 0.65 — height goes first
+    ySpring.pos = 0;
+    ySpring.target = SEARCH_CLOSE.targetY;
+
     const sySpring = createSpring({ stiffness: 240, damping: 28 });
-    sySpring.pos    = 1;
-    sySpring.target = 0.65;
- 
-    // ScaleX: narrows from 1 → 0.88 — width closes last
+    sySpring.pos = 1;
+    sySpring.target = SEARCH_CLOSE.targetScaleY;
+
     const sxSpring = createSpring({ stiffness: 180, damping: 26 });
-    sxSpring.pos    = 1;
-    sxSpring.target = 0.88;
- 
-    const DURATION = 320; // exit is snappier than entrance
-    const safetyId = setTimeout(() => clone.remove(), 500);
- 
-    let start = null, last = null;
- 
+    sxSpring.pos = 1;
+    sxSpring.target = SEARCH_CLOSE.targetScaleX;
+
+    let start = null;
+    let last = null;
+
+    function cleanup() {
+      if (state.rafId) {
+        cancelAnimationFrame(state.rafId);
+        state.rafId = 0;
+      }
+      if (state.safetyId) {
+        clearTimeout(state.safetyId);
+        state.safetyId = 0;
+      }
+      clone.remove();
+      state.mode = "idle";
+    }
+
+    state.safetyId = setTimeout(() => {
+      cleanup();
+    }, SEARCH_CLOSE.safetyMs);
+
     function frame(now) {
-      if (!start) { start = last = now; }
+      if (!clone.isConnected) {
+        cleanup();
+        return;
+      }
+
+      if (!start) {
+        start = last = now;
+      }
       const elapsed = now - start;
-      const dt      = Math.min((now - last) / 1000, 0.05);
+      const dt = Math.min((now - last) / 1000, 0.05);
       last = now;
- 
+
       ySpring.step(dt);
       sySpring.step(dt);
       sxSpring.step(dt);
- 
-      // Opacity: holds full for first 15%, then accelerates out
-      const rawP   = clamp(elapsed / DURATION, 0, 1);
-      const opP    = clamp((rawP - 0.15) / 0.85, 0, 1);
+
+      const rawP = clamp(elapsed / SEARCH_CLOSE.durationMs, 0, 1);
+      const opP = clamp(
+        (rawP - SEARCH_CLOSE.opacityHoldStart) / SEARCH_CLOSE.opacityFadeSpan,
+        0,
+        1
+      );
       const opacity = lerp(1, 0, easeInExpo(opP));
- 
+
       clone.style.transform = `
         translateY(${ySpring.pos.toFixed(3)}px)
         scaleX(${sxSpring.pos.toFixed(4)})
         scaleY(${sySpring.pos.toFixed(4)})
       `;
       clone.style.opacity = opacity.toFixed(3);
- 
+
       const allSettled = rawP >= 1
-                      || (ySpring.settled(0.1)
-                       && sySpring.settled(0.0005)
-                       && sxSpring.settled(0.0005)
+                      || (ySpring.settled(SEARCH_CLOSE.settleY)
+                       && sySpring.settled(SEARCH_CLOSE.settleScale)
+                       && sxSpring.settled(SEARCH_CLOSE.settleScale)
                        && opacity < 0.01);
- 
-      if (!allSettled) {
-        requestAnimationFrame(frame);
-      } else {
-        clearTimeout(safetyId);
-        clone.remove();
-        urlbar._ogSearchCloseAnimating = false;
+
+      if (!allSettled && state.mode === "closing") {
+        state.rafId = requestAnimationFrame(frame);
+      } else if (state.mode === "closing") {
+        cleanup();
       }
     }
- 
-    requestAnimationFrame(frame);
+
+    state.rafId = requestAnimationFrame(frame);
   }
+
   // ── Watch for urlbar open/close ─────────────────────────────────
   // Zen sets [open] on #urlbar when the search panel appears,
   // and removes it when it closes.
   function watchSearchBar() {
+    if (searchObserver) {
+      searchObserver.disconnect();
+      searchObserver = null;
+    }
+
     const urlbar = document.getElementById("urlbar");
     if (!urlbar) return;
- 
+
     let wasOpen = urlbar.hasAttribute("open");
- 
-    const obs = new MutationObserver(() => {
+
+    searchObserver = new MutationObserver(() => {
       const isOpen = urlbar.hasAttribute("open");
       if (isOpen && !wasOpen) {
         animateSearchOpen(urlbar);
@@ -429,21 +571,53 @@
       }
       wasOpen = isOpen;
     });
- 
-    obs.observe(urlbar, { attributes: true, attributeFilter: ["open"] });
+
+    searchObserver.observe(urlbar, { attributes: true, attributeFilter: ["open"] });
   }
- 
+
+  function cleanup() {
+    if (searchObserver) {
+      searchObserver.disconnect();
+      searchObserver = null;
+    }
+
+    const urlbar = document.getElementById("urlbar");
+    if (urlbar) {
+      stopSearchAnimation(urlbar, "idle");
+    }
+
+    if (tabCloseHandler && typeof gBrowser !== "undefined" && gBrowser?.tabContainer) {
+      gBrowser.tabContainer.removeEventListener("TabClose", tabCloseHandler);
+      tabCloseHandler = null;
+    }
+
+    if (unloadHandler) {
+      window.removeEventListener("unload", unloadHandler);
+      unloadHandler = null;
+    }
+
+    window.__ogAnimInit = false;
+  }
+
   // ── Init ────────────────────────────────────────────────────────
   function init() {
     if (window.__ogAnimInit) return;
+    if (typeof gBrowser === "undefined" || !gBrowser?.tabContainer) return;
+
     window.__ogAnimInit = true;
-    gBrowser.tabContainer.addEventListener("TabClose", e => animateTabClose(e.target));
+
+    tabCloseHandler = e => animateTabClose(e.target);
+    gBrowser.tabContainer.addEventListener("TabClose", tabCloseHandler);
+
     watchSearchBar();
+
+    unloadHandler = () => cleanup();
+    window.addEventListener("unload", unloadHandler, { once: true });
   }
- 
-  if (gBrowserInit?.delayedStartupFinished) {
+
+  if (typeof gBrowserInit !== "undefined" && gBrowserInit?.delayedStartupFinished) {
     init();
-  } else {
+  } else if (typeof Services !== "undefined" && Services?.obs) {
     const obs = (subject, topic) => {
       if (topic === "browser-delayed-startup-finished" && subject === window) {
         Services.obs.removeObserver(obs, topic);
@@ -452,5 +626,4 @@
     };
     Services.obs.addObserver(obs, "browser-delayed-startup-finished");
   }
- 
 })();
