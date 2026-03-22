@@ -6,7 +6,6 @@
 // @compatibility  Firefox 100+
 // ==/UserScript==
 
- 
 (function InjectScript() {
  
   // ── Styles ──────────────────────────────────────────────────────
