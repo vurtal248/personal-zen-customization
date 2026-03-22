@@ -6,6 +6,7 @@
 // @compatibility  Firefox 100+
 // ==/UserScript==
 
+ 
 (function InjectScript() {
  
   // ── Styles ──────────────────────────────────────────────────────
@@ -313,10 +314,107 @@
     requestAnimationFrame(frame);
   }
  
-  // ── Watch for urlbar open state ─────────────────────────────────
-  // Zen sets [open] on #urlbar when the search panel appears.
-  // MutationObserver on the attribute fires synchronously before
-  // the first paint, so the spring starts from frame 0.
+  // ── Search bar exit ─────────────────────────────────────────────
+  // Clone the urlbar visually, position it fixed over the original,
+  // animate the clone out, then discard it. This way Zen can
+  // immediately hide the real urlbar without us fighting it.
+  function animateSearchClose(urlbar) {
+    if (urlbar._ogSearchCloseAnimating) return;
+    urlbar._ogSearchCloseAnimating = true;
+ 
+    const rect = urlbar.getBoundingClientRect();
+    if (rect.width === 0 || rect.height === 0) {
+      urlbar._ogSearchCloseAnimating = false;
+      return;
+    }
+ 
+    // Clone the bar at its current visual state
+    const clone = urlbar.cloneNode(true);
+    clone.removeAttribute("id"); // avoid ID collisions
+    clone.style.cssText = `
+      position: fixed !important;
+      left: ${rect.left}px !important;
+      top: ${rect.top}px !important;
+      width: ${rect.width}px !important;
+      height: ${rect.height}px !important;
+      margin: 0 !important;
+      pointer-events: none !important;
+      z-index: 9999 !important;
+      transform-origin: top center !important;
+      will-change: transform, opacity !important;
+      overflow: hidden !important;
+      border-radius: 10px !important;
+    `;
+ 
+    const mount = document.body ?? document.documentElement;
+    mount.appendChild(clone);
+ 
+    // Three springs — exit personality is opposite of entrance:
+    // Y drops DOWN (positive), scaleY collapses first, scaleX last.
+    // Stiffer than entrance so the exit feels decisive, not lingering.
+ 
+    // Y: drops 22px downward — fast initial pull
+    const ySpring = createSpring({ stiffness: 280, damping: 30 });
+    ySpring.pos    = 0;
+    ySpring.target = 22;
+ 
+    // ScaleY: collapses from 1 → 0.65 — height goes first
+    const sySpring = createSpring({ stiffness: 240, damping: 28 });
+    sySpring.pos    = 1;
+    sySpring.target = 0.65;
+ 
+    // ScaleX: narrows from 1 → 0.88 — width closes last
+    const sxSpring = createSpring({ stiffness: 180, damping: 26 });
+    sxSpring.pos    = 1;
+    sxSpring.target = 0.88;
+ 
+    const DURATION = 320; // exit is snappier than entrance
+    const safetyId = setTimeout(() => clone.remove(), 500);
+ 
+    let start = null, last = null;
+ 
+    function frame(now) {
+      if (!start) { start = last = now; }
+      const elapsed = now - start;
+      const dt      = Math.min((now - last) / 1000, 0.05);
+      last = now;
+ 
+      ySpring.step(dt);
+      sySpring.step(dt);
+      sxSpring.step(dt);
+ 
+      // Opacity: holds full for first 15%, then accelerates out
+      const rawP   = clamp(elapsed / DURATION, 0, 1);
+      const opP    = clamp((rawP - 0.15) / 0.85, 0, 1);
+      const opacity = lerp(1, 0, easeInExpo(opP));
+ 
+      clone.style.transform = `
+        translateY(${ySpring.pos.toFixed(3)}px)
+        scaleX(${sxSpring.pos.toFixed(4)})
+        scaleY(${sySpring.pos.toFixed(4)})
+      `;
+      clone.style.opacity = opacity.toFixed(3);
+ 
+      const allSettled = rawP >= 1
+                      || (ySpring.settled(0.1)
+                       && sySpring.settled(0.0005)
+                       && sxSpring.settled(0.0005)
+                       && opacity < 0.01);
+ 
+      if (!allSettled) {
+        requestAnimationFrame(frame);
+      } else {
+        clearTimeout(safetyId);
+        clone.remove();
+        urlbar._ogSearchCloseAnimating = false;
+      }
+    }
+ 
+    requestAnimationFrame(frame);
+  }
+  // ── Watch for urlbar open/close ─────────────────────────────────
+  // Zen sets [open] on #urlbar when the search panel appears,
+  // and removes it when it closes.
   function watchSearchBar() {
     const urlbar = document.getElementById("urlbar");
     if (!urlbar) return;
@@ -326,8 +424,9 @@
     const obs = new MutationObserver(() => {
       const isOpen = urlbar.hasAttribute("open");
       if (isOpen && !wasOpen) {
-        // Just opened — run entrance animation
         animateSearchOpen(urlbar);
+      } else if (!isOpen && wasOpen) {
+        animateSearchClose(urlbar);
       }
       wasOpen = isOpen;
     });
