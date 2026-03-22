@@ -49,6 +49,7 @@
 
   const searchAnimationState = new WeakMap();
   let searchObserver = null;
+  let startupObserver = null;
   let tabCloseHandler = null;
   let unloadHandler = null;
 
@@ -222,6 +223,12 @@
     return clone;
   }
 
+  function disconnectStartupObserver() {
+    if (!startupObserver || typeof Services === "undefined" || !Services?.obs) return;
+    Services.obs.removeObserver(startupObserver, "browser-delayed-startup-finished");
+    startupObserver = null;
+  }
+
   // ── Tab deletion ────────────────────────────────────────────────
   function animateTabClose(tab) {
     if (!tab?.isConnected || !tab.parentNode) return;
@@ -275,12 +282,10 @@
     mount.appendChild(ghostMask);
     mount.appendChild(mask);
 
+    let finished = false;
+
     const safetyId = setTimeout(() => {
-      mask.remove();
-      ghostMask.remove();
-      if (spacer.isConnected) {
-        collapseSpacer(spacer, H);
-      }
+      cleanup();
     }, TAB_CLOSE.safetyMs);
 
     const xSpring = createSpring({ stiffness: 140, damping: 22 });
@@ -291,6 +296,9 @@
     let rafId = 0;
 
     function cleanup() {
+      if (finished) return;
+      finished = true;
+
       if (rafId) {
         cancelAnimationFrame(rafId);
         rafId = 0;
@@ -483,7 +491,12 @@
     let start = null;
     let last = null;
 
+    let finished = false;
+
     function cleanup() {
+      if (finished) return;
+      finished = true;
+
       if (state.rafId) {
         cancelAnimationFrame(state.rafId);
         state.rafId = 0;
@@ -581,6 +594,8 @@
       searchObserver = null;
     }
 
+    disconnectStartupObserver();
+
     const urlbar = document.getElementById("urlbar");
     if (urlbar) {
       stopSearchAnimation(urlbar, "idle");
@@ -618,12 +633,12 @@
   if (typeof gBrowserInit !== "undefined" && gBrowserInit?.delayedStartupFinished) {
     init();
   } else if (typeof Services !== "undefined" && Services?.obs) {
-    const obs = (subject, topic) => {
+    startupObserver = (subject, topic) => {
       if (topic === "browser-delayed-startup-finished" && subject === window) {
-        Services.obs.removeObserver(obs, topic);
+        disconnectStartupObserver();
         init();
       }
     };
-    Services.obs.addObserver(obs, "browser-delayed-startup-finished");
+    Services.obs.addObserver(startupObserver, "browser-delayed-startup-finished");
   }
 })();
