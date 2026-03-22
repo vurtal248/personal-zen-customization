@@ -12,39 +12,42 @@
   const STYLE_ID = "obsidian-glass-anim";
 
   const TAB_CLOSE = {
-    durationMs: 660,
-    safetyMs: 1200,
-    antiMs: 55,
-    antiPx: 3,
-    ghostDelayMs: 75,
-    shineDurationMs: 300,
-    opacityStart: 0.58,
-    opacitySpan: 0.42,
-    ghostTravelFactor: 0.82,
-    spacerRemoveSafetyMs: 800,
-    settledPx: 0.5,
+    durationMs: 760,
+    safetyMs: 1300,
+    antiMs: 72,
+    antiPx: 2.25,
+    ghostDelayMs: 92,
+    shineDurationMs: 360,
+    opacityStart: 0.5,
+    opacitySpan: 0.5,
+    ghostTravelFactor: 0.86,
+    blurMaxPx: 10,
+    travelFactor: 1.02,
+    ghostOpacityStart: 0.24,
+    spacerRemoveSafetyMs: 900,
+    settledPx: 0.4,
   };
 
   const SEARCH_OPEN = {
-    fadeMs: 120,
-    safetyMs: 600,
-    startY: 18,
-    startScaleX: 0.88,
-    startScaleY: 0.72,
-    settleY: 0.08,
-    settleScale: 0.0005,
+    fadeMs: 150,
+    safetyMs: 700,
+    startY: 14,
+    startScaleX: 0.92,
+    startScaleY: 0.82,
+    settleY: 0.06,
+    settleScale: 0.0004,
   };
 
   const SEARCH_CLOSE = {
-    durationMs: 320,
-    safetyMs: 500,
-    targetY: 22,
-    targetScaleX: 0.88,
-    targetScaleY: 0.65,
-    opacityHoldStart: 0.15,
-    opacityFadeSpan: 0.85,
-    settleY: 0.1,
-    settleScale: 0.0005,
+    durationMs: 380,
+    safetyMs: 560,
+    targetY: 18,
+    targetScaleX: 0.91,
+    targetScaleY: 0.74,
+    opacityHoldStart: 0.1,
+    opacityFadeSpan: 0.9,
+    settleY: 0.08,
+    settleScale: 0.0004,
   };
 
   const searchAnimationState = new WeakMap();
@@ -135,6 +138,7 @@
   // ── Easings ─────────────────────────────────────────────────────
   const easeInExpo = t => t === 0 ? 0 : Math.pow(2, 10 * t - 10);
   const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
+  const easeInOutSine = t => -(Math.cos(Math.PI * t) - 1) / 2;
   const lerp = (a, b, t) => a + (b - a) * t;
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -288,8 +292,8 @@
       cleanup();
     }, TAB_CLOSE.safetyMs);
 
-    const xSpring = createSpring({ stiffness: 140, damping: 22 });
-    const travel = -(W * 1.05);
+    const xSpring = createSpring({ stiffness: 122, damping: 20 });
+    const travel = -(W * TAB_CLOSE.travelFactor);
 
     let start = null;
     let last = null;
@@ -333,20 +337,20 @@
       const tx = antX + xSpring.step(dt) * travel;
 
       const opP = clamp((rawP - TAB_CLOSE.opacityStart) / TAB_CLOSE.opacitySpan, 0, 1);
-      const opacity = lerp(1, 0, easeInExpo(opP));
-      const blurPx = lerp(0, 8, easeInExpo(exitP));
+      const opacity = lerp(1, 0, easeInOutSine(opP));
+      const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeInOutSine(exitP));
 
       const shineP = clamp(elapsed / TAB_CLOSE.shineDurationMs, 0, 1);
-      const shineX = lerp(-110, 200, easeOutQuart(shineP));
+      const shineX = lerp(-105, 185, easeInOutSine(shineP));
       const shineOp = shineP < 0.5
         ? lerp(0, 0.55, shineP / 0.5)
         : lerp(0.55, 0, (shineP - 0.5) / 0.5);
 
       const gElapsed = Math.max(0, elapsed - TAB_CLOSE.ghostDelayMs);
       const gExitP = clamp((gElapsed - TAB_CLOSE.antiMs) / (TAB_CLOSE.durationMs - TAB_CLOSE.antiMs), 0, 1);
-      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeInExpo(gExitP));
-      const gOp = lerp(0.28, 0, easeOutQuart(
-        clamp((gElapsed / TAB_CLOSE.durationMs - 0.25) / 0.75, 0, 1)
+      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeInOutSine(gExitP));
+      const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeInOutSine(
+        clamp((gElapsed / TAB_CLOSE.durationMs - 0.18) / 0.82, 0, 1)
       ));
 
       clone.style.transform = `translateX(${tx.toFixed(2)}px)`;
@@ -378,15 +382,15 @@
     stopSearchAnimation(urlbar, "opening");
     urlbar.classList.add("og-search-animating");
 
-    const ySpring = createSpring({ stiffness: 320, damping: 28 });
+    const ySpring = createSpring({ stiffness: 250, damping: 24 });
     ySpring.pos = SEARCH_OPEN.startY;
     ySpring.target = 0;
 
-    const sxSpring = createSpring({ stiffness: 260, damping: 26 });
+    const sxSpring = createSpring({ stiffness: 210, damping: 23 });
     sxSpring.pos = SEARCH_OPEN.startScaleX;
     sxSpring.target = 1;
 
-    const sySpring = createSpring({ stiffness: 200, damping: 24 });
+    const sySpring = createSpring({ stiffness: 178, damping: 21 });
     sySpring.pos = SEARCH_OPEN.startScaleY;
     sySpring.target = 1;
 
@@ -417,7 +421,7 @@
       sxSpring.step(dt);
       sySpring.step(dt);
 
-      const opacity = Math.min(1, elapsed / SEARCH_OPEN.fadeMs);
+      const opacity = easeOutQuart(clamp(elapsed / SEARCH_OPEN.fadeMs, 0, 1));
 
       urlbar.style.transform = `
         translateY(${ySpring.pos.toFixed(3)}px)
@@ -476,15 +480,15 @@
     const mount = document.body ?? document.documentElement;
     mount.appendChild(clone);
 
-    const ySpring = createSpring({ stiffness: 280, damping: 30 });
+    const ySpring = createSpring({ stiffness: 210, damping: 24 });
     ySpring.pos = 0;
     ySpring.target = SEARCH_CLOSE.targetY;
 
-    const sySpring = createSpring({ stiffness: 240, damping: 28 });
+    const sySpring = createSpring({ stiffness: 190, damping: 23 });
     sySpring.pos = 1;
     sySpring.target = SEARCH_CLOSE.targetScaleY;
 
-    const sxSpring = createSpring({ stiffness: 180, damping: 26 });
+    const sxSpring = createSpring({ stiffness: 170, damping: 22 });
     sxSpring.pos = 1;
     sxSpring.target = SEARCH_CLOSE.targetScaleX;
 
@@ -536,7 +540,7 @@
         0,
         1
       );
-      const opacity = lerp(1, 0, easeInExpo(opP));
+      const opacity = lerp(1, 0, easeInOutSine(opP));
 
       clone.style.transform = `
         translateY(${ySpring.pos.toFixed(3)}px)
