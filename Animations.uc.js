@@ -18,19 +18,20 @@
     antiPx: 2.2,
     ghostDelayMs: 88,
     shineDurationMs: 340,
-    opacityStart: 0.6,
-    opacitySpan: 0.4,
+    opacityStart: 0.58,
+    opacitySpan: 0.42,
     ghostTravelFactor: 0.85,
     blurMaxPx: 7.5,
     travelFactor: 1.02,
     ghostOpacityStart: 0.24,
     shinePeakOpacity: 0.46,
     shineSkewDeg: -16,
+    settleOpacity: 0.035,
     settledPx: 0.38,
     spacerStiffness: 114,
     spacerDamping: 19,
-    slideStiffness: 126,
-    slideDamping: 20,
+    slideStiffness: 138,
+    slideDamping: 19,
     ghostFadeOffset: 0.22,
     ghostFadeSpan: 0.78,
     spacerRemoveSafetyMs: 900,
@@ -358,14 +359,14 @@
       const antP = clamp(elapsed / TAB_CLOSE.antiMs, 0, 1);
       const antX = Math.sin(antP * Math.PI) * TAB_CLOSE.antiPx;
       const exitP = clamp((elapsed - TAB_CLOSE.antiMs) / (TAB_CLOSE.durationMs - TAB_CLOSE.antiMs), 0, 1);
-      const driveP = mix(easeInExpo(exitP), easeInOutSine(exitP), 0.2);
+      const driveP = mix(easeInExpo(exitP), easeOutQuart(exitP), 0.18);
 
       xSpring.target = driveP;
       const tx = antX + xSpring.step(dt) * travel;
 
       const opP = clamp((rawP - TAB_CLOSE.opacityStart) / TAB_CLOSE.opacitySpan, 0, 1);
       const opacity = lerp(1, 0, easeOutQuart(opP));
-      const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeInOutSine(opP));
+      const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeOutQuart(opP));
 
       const shineP = clamp(elapsed / TAB_CLOSE.shineDurationMs, 0, 1);
       const shineX = lerp(-108, 186, easeOutQuart(shineP));
@@ -375,7 +376,7 @@
 
       const gElapsed = Math.max(0, elapsed - TAB_CLOSE.ghostDelayMs);
       const gExitP = clamp((gElapsed - TAB_CLOSE.antiMs) / (TAB_CLOSE.durationMs - TAB_CLOSE.antiMs), 0, 1);
-      const gDriveP = mix(easeInExpo(gExitP), easeInOutSine(gExitP), 0.32);
+      const gDriveP = mix(easeInExpo(gExitP), easeOutQuart(gExitP), 0.2);
       const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, gDriveP);
       const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeOutQuart(
         clamp((gElapsed / TAB_CLOSE.durationMs - TAB_CLOSE.ghostFadeOffset) / TAB_CLOSE.ghostFadeSpan, 0, 1)
@@ -389,7 +390,10 @@
       ghostClone.style.transform = `translateX(${gTx.toFixed(2)}px)`;
       ghostClone.style.opacity = gOp;
 
-      if (rawP < 1) {
+      const slideSettled = xSpring.settled(0.0025);
+      const fullyFaded = opacity <= TAB_CLOSE.settleOpacity && gOp <= 0.01;
+
+      if (rawP < 1 || !slideSettled || !fullyFaded) {
         rafId = requestAnimationFrame(frame);
       } else {
         cleanup();
