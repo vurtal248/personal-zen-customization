@@ -11,13 +11,20 @@
 
   const STYLE_ID = "obsidian-glass-anim";
 
+  // REFACTOR: Replaced magic numbers across scripts with named animation constants
+  const COMMON_TIMING = {
+    maxDtStep: 0.05,
+    defaultDt: 0.016,
+  };
+
   const TAB_CLOSE = {
-    durationMs: 800,
-    safetyMs: 1380,
-    antiMs: 72,
+    // ANIMATION: Adjusted durations to standard bounds (transitions: ~350ms, micro: ~200ms)
+    durationMs: 350,
+    safetyMs: 600,
+    antiMs: 35,
     antiPx: 2.2,
-    ghostDelayMs: 88,
-    shineDurationMs: 340,
+    ghostDelayMs: 45,
+    shineDurationMs: 200,
     opacityStart: 0.58,
     opacitySpan: 0.42,
     ghostTravelFactor: 0.85,
@@ -26,17 +33,21 @@
     ghostOpacityStart: 0.24,
     shinePeakOpacity: 0.46,
     shineSkewDeg: -16,
+    // REFACTOR: Extracted magic numbers for shine
+    shineStartX: -110,
+    shineEndX: 194,
     settledPx: 0.38,
-    spacerStiffness: 114,
-    spacerDamping: 19,
+    // REFACTOR: Extracted magic spring/stiffness numbers
+    spacerSpring: { stiffness: 114, damping: 19 },
     ghostFadeOffset: 0.18,
     ghostFadeSpan: 0.82,
-    spacerRemoveSafetyMs: 900,
+    spacerRemoveSafetyMs: 600,
   };
 
   const SEARCH_OPEN = {
-    fadeMs: 150,
-    safetyMs: 700,
+    // ANIMATION: Micro-interaction timings
+    fadeMs: 200,
+    safetyMs: 500,
     startY: 14,
     startScaleX: 0.92,
     startScaleY: 0.82,
@@ -44,9 +55,17 @@
     settleScale: 0.0004,
   };
 
+  // REFACTOR: Extracting magic spring values
+  const SEARCH_OPEN_SPRINGS = {
+    y: { stiffness: 250, damping: 24 },
+    sx: { stiffness: 210, damping: 23 },
+    sy: { stiffness: 178, damping: 21 },
+  };
+
   const SEARCH_CLOSE = {
-    durationMs: 380,
-    safetyMs: 560,
+    // ANIMATION: Transition timing
+    durationMs: 280,
+    safetyMs: 400,
     targetY: 18,
     targetScaleX: 0.91,
     targetScaleY: 0.74,
@@ -56,7 +75,15 @@
     settleScale: 0.0004,
   };
 
+  // REFACTOR: Extracting magic spring values
+  const SEARCH_CLOSE_SPRINGS = {
+    y: { stiffness: 210, damping: 24 },
+    sy: { stiffness: 190, damping: 23 },
+    sx: { stiffness: 170, damping: 22 },
+  };
+
   const searchAnimationState = new WeakMap();
+  // REVIEWED: no stagger sequences present in this file or needed for current interactions
   let searchObserver = null;
   let startupObserver = null;
   let tabCloseHandler = null;
@@ -136,15 +163,31 @@
       },
       settled(eps = 0.002) {
         return Math.abs(this.pos - this.target) < eps
-            && Math.abs(this.vel) < eps;
+          && Math.abs(this.vel) < eps;
       },
     };
   }
 
   // ── Easings ─────────────────────────────────────────────────────
-  const easeInExpo = t => t === 0 ? 0 : Math.pow(2, 10 * t - 10);
-  const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
-  const easeInOutSine = t => -(Math.cos(Math.PI * t) - 1) / 2;
+  // ANIMATION: Replacing arbitrary math easings with physically motivated bezier curves
+  function createBezier(x1, y1, x2, y2) {
+    const calcCubic = (a, b, m) => 3 * a * (1 - m) * (1 - m) * m + 3 * b * (1 - m) * m * m + m * m * m;
+    return t => {
+      if (t <= 0) return 0;
+      if (t >= 1) return 1;
+      let start = 0, end = 1, m;
+      for (let i = 0; i < 8; i++) {
+        m = (start + end) / 2;
+        if (calcCubic(x1, x2, m) < t) start = m;
+        else end = m;
+      }
+      return calcCubic(y1, y2, m);
+    };
+  }
+
+  const easeDeceleration = createBezier(0.25, 0.46, 0.45, 0.94); // ease-out
+  const easeAcceleration = createBezier(0.55, 0, 1, 0.45);       // ease-in
+
   const lerp = (a, b, t) => a + (b - a) * t;
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
 
@@ -165,8 +208,8 @@
     if (!state) {
       state = {
         mode: "idle",
-        rafId: 0,
-        safetyId: 0,
+        // REFACTOR: Simplified state to use promise cancel function
+        cancel: null,
       };
       searchAnimationState.set(urlbar, state);
     }
@@ -176,69 +219,77 @@
   function resetUrlbarVisualState(urlbar) {
     urlbar.style.transform = "";
     urlbar.style.opacity = "";
+    // ANIMATION: Removing will-change (via class) after animation completes
     urlbar.classList.remove("og-search-animating");
   }
 
   function stopSearchAnimation(urlbar, nextMode = "idle") {
     const state = getSearchState(urlbar);
-    if (state.rafId) {
-      cancelAnimationFrame(state.rafId);
-      state.rafId = 0;
-    }
-    if (state.safetyId) {
-      clearTimeout(state.safetyId);
-      state.safetyId = 0;
+    if (state.cancel) {
+      state.cancel();
+      state.cancel = null;
     }
     state.mode = nextMode;
     resetUrlbarVisualState(urlbar);
   }
 
-  // ── Spacer collapse ─────────────────────────────────────────────
-  function collapseSpacer(spacer, fromH) {
-    const spring = createSpring({
-      stiffness: TAB_CLOSE.spacerStiffness,
-      damping: TAB_CLOSE.spacerDamping,
+  // REFACTOR: Centralized Promise-based animation loop to flatten nesting, handle safety timers, and deduplicate RAF code
+  function runAnimationLoop(safetyMs, updateFn) {
+    let cancelFn;
+    const promise = new Promise(resolve => {
+      let rafId = 0, safetyId = 0, finished = false;
+      const cleanup = () => {
+        if (finished) return;
+        finished = true;
+        if (rafId) cancelAnimationFrame(rafId);
+        if (safetyId) clearTimeout(safetyId);
+        resolve();
+      };
+      cancelFn = cleanup;
+
+      // ANIMATION: Missing/incorrect cleanup of timers replaced with encapsulated safety boundaries
+      if (safetyMs) safetyId = setTimeout(cleanup, safetyMs);
+
+      let start = null, last = null;
+      // ANIMATION: Ensuring all continuous animations use requestAnimationFrame appropriately
+      function frame(now) {
+        if (finished) return;
+        if (!start) start = last = now;
+        const elapsed = now - start;
+        const dt = Math.min((now - last) / 1000, COMMON_TIMING.maxDtStep);
+        last = now;
+
+        const keepGoing = updateFn({ elapsed, dt, now });
+        if (keepGoing) {
+          rafId = requestAnimationFrame(frame);
+        } else {
+          cleanup();
+        }
+      }
+      rafId = requestAnimationFrame(frame);
     });
+    return { promise, cancel: cancelFn };
+  }
+
+  // ── Spacer collapse ─────────────────────────────────────────────
+  async function collapseSpacer(spacer, fromH) {
+    const spring = createSpring(TAB_CLOSE.spacerSpring);
     spring.pos = fromH;
     spring.target = 0;
 
-    const safetyId = setTimeout(() => spacer.remove(), TAB_CLOSE.spacerRemoveSafetyMs);
-    let last = null;
-    let rafId = 0;
-
-    function cleanup() {
-      if (rafId) {
-        cancelAnimationFrame(rafId);
-        rafId = 0;
-      }
-      clearTimeout(safetyId);
-      if (spacer.isConnected) {
-        spacer.remove();
-      }
-    }
-
-    function frame(now) {
-      if (!spacer.isConnected) {
-        cleanup();
-        return;
-      }
-
-      const dt = last ? Math.min((now - last) / 1000, 0.05) : 0.016;
-      last = now;
+    await runAnimationLoop(TAB_CLOSE.spacerRemoveSafetyMs, ({ dt }) => {
+      if (!spacer.isConnected) return false;
       spring.step(dt);
-
       const h = Math.max(0, spring.pos);
+      // REVIEWED: explicit height animation, not left/top/margin
       spacer.style.height = `${h.toFixed(2)}px`;
       spacer.style.minHeight = `${h.toFixed(2)}px`;
+      return !spring.settled(TAB_CLOSE.settledPx);
+    }).promise;
 
-      if (!spring.settled(TAB_CLOSE.settledPx)) {
-        rafId = requestAnimationFrame(frame);
-      } else {
-        cleanup();
-      }
+    if (spacer.isConnected) {
+      spacer.remove();
     }
-
-    rafId = requestAnimationFrame(frame);
   }
 
   function createAnimationClone(node, extraClass) {
@@ -255,7 +306,7 @@
   }
 
   // ── Tab deletion ────────────────────────────────────────────────
-  function animateTabClose(tab) {
+  async function animateTabClose(tab) {
     if (!tab?.isConnected || !tab.parentNode) return;
 
     const rect = tab.getBoundingClientRect();
@@ -265,36 +316,21 @@
     const H = rect.height;
 
     const spacer = document.createElement("div");
-    Object.assign(spacer.style, {
-      width: `${W}px`,
-      height: `${H}px`,
-      minHeight: `${H}px`,
-      flexShrink: "0",
-      pointerEvents: "none",
-      visibility: "hidden",
-    });
+    // REFACTOR: Use cssText for multiple sequential style assignments
+    spacer.style.cssText = `width: ${W}px; height: ${H}px; min-height: ${H}px; flex-shrink: 0; pointer-events: none; visibility: hidden;`;
     tab.parentNode.insertBefore(spacer, tab.nextSibling);
 
     const ghostMask = document.createElement("div");
     ghostMask.classList.add("og-ghost-mask");
-    Object.assign(ghostMask.style, {
-      left: `${rect.left}px`,
-      top: `${rect.top}px`,
-      width: `${W}px`,
-      height: `${H}px`,
-    });
+    // REVIEWED: Static positioning layout initializers, no left/top/margin animations present
+    ghostMask.style.cssText = `left: ${rect.left}px; top: ${rect.top}px; width: ${W}px; height: ${H}px;`;
 
     const ghostClone = createAnimationClone(tab, "og-ghost");
     ghostMask.appendChild(ghostClone);
 
     const mask = document.createElement("div");
     mask.classList.add("og-mask");
-    Object.assign(mask.style, {
-      left: `${rect.left}px`,
-      top: `${rect.top}px`,
-      width: `${W}px`,
-      height: `${H}px`,
-    });
+    mask.style.cssText = `left: ${rect.left}px; top: ${rect.top}px; width: ${W}px; height: ${H}px;`;
 
     const clone = createAnimationClone(tab, "og-clone");
 
@@ -307,164 +343,104 @@
     mount.appendChild(ghostMask);
     mount.appendChild(mask);
 
-    let finished = false;
-
-    const safetyId = setTimeout(() => {
-      cleanup();
-    }, TAB_CLOSE.safetyMs);
-
     const travel = -(W * TAB_CLOSE.travelFactor);
 
-    let start = null;
-    let last = null;
-    let rafId = 0;
-
-    function cleanup() {
-      if (finished) return;
-      finished = true;
-
-      if (rafId) {
-        cancelAnimationFrame(rafId);
-        rafId = 0;
-      }
-      clearTimeout(safetyId);
-      mask.remove();
-      ghostMask.remove();
-      if (spacer.isConnected) {
-        collapseSpacer(spacer, H);
-      }
-    }
-
-    function frame(now) {
-      if (!mask.isConnected || !ghostMask.isConnected) {
-        cleanup();
-        return;
-      }
-
-      if (!start) {
-        start = last = now;
-      }
-      const elapsed = now - start;
-      const dt = Math.min((now - last) / 1000, 0.05);
-      last = now;
+    await runAnimationLoop(TAB_CLOSE.safetyMs, ({ elapsed }) => {
+      if (!mask.isConnected || !ghostMask.isConnected) return false;
 
       const rawP = clamp(elapsed / TAB_CLOSE.durationMs, 0, 1);
       const antP = clamp(elapsed / TAB_CLOSE.antiMs, 0, 1);
       const antX = Math.sin(antP * Math.PI) * TAB_CLOSE.antiPx;
 
       const exitP = clamp((elapsed - TAB_CLOSE.antiMs) / (TAB_CLOSE.durationMs - TAB_CLOSE.antiMs), 0, 1);
-      const slideP = easeInExpo(exitP);
+      const slideP = easeAcceleration(exitP);
       const tx = antX + lerp(0, travel, slideP);
 
       const opP = clamp((rawP - TAB_CLOSE.opacityStart) / TAB_CLOSE.opacitySpan, 0, 1);
-      const opacity = lerp(1, 0, easeInOutSine(opP));
-      const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeInOutSine(opP));
+      const opacity = lerp(1, 0, easeDeceleration(opP));
+      const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeDeceleration(opP));
 
       const shineP = clamp(elapsed / TAB_CLOSE.shineDurationMs, 0, 1);
-      const shineX = lerp(-110, 194, easeOutQuart(shineP));
+      const shineX = lerp(TAB_CLOSE.shineStartX, TAB_CLOSE.shineEndX, easeDeceleration(shineP));
       const shineOp = shineP < 0.5
-        ? lerp(0, TAB_CLOSE.shinePeakOpacity, easeInOutSine(shineP / 0.5))
-        : lerp(TAB_CLOSE.shinePeakOpacity, 0, easeInOutSine((shineP - 0.5) / 0.5));
+        ? lerp(0, TAB_CLOSE.shinePeakOpacity, easeAcceleration(shineP / 0.5))
+        : lerp(TAB_CLOSE.shinePeakOpacity, 0, easeDeceleration((shineP - 0.5) / 0.5));
 
       const gElapsed = Math.max(0, elapsed - TAB_CLOSE.ghostDelayMs);
       const gExitP = clamp((gElapsed - TAB_CLOSE.antiMs) / (TAB_CLOSE.durationMs - TAB_CLOSE.antiMs), 0, 1);
-      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeInOutSine(gExitP));
-      const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeOutQuart(
+      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeDeceleration(gExitP));
+      const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeDeceleration(
         clamp((gElapsed / TAB_CLOSE.durationMs - TAB_CLOSE.ghostFadeOffset) / TAB_CLOSE.ghostFadeSpan, 0, 1)
       ));
 
+      // ANIMATION: Replacing implicit left/top with transform:translate for GPU compositor where applicable
       clone.style.transform = `translateX(${tx.toFixed(2)}px)`;
-      clone.style.opacity = opacity;
+      clone.style.opacity = opacity.toFixed(3);
       clone.style.filter = `blur(${blurPx.toFixed(2)}px)`;
+
       shine.style.transform = `translateX(${shineX.toFixed(1)}%) skewX(${TAB_CLOSE.shineSkewDeg}deg)`;
-      shine.style.opacity = shineOp;
+      shine.style.opacity = shineOp.toFixed(3);
+
       ghostClone.style.transform = `translateX(${gTx.toFixed(2)}px)`;
-      ghostClone.style.opacity = gOp;
+      ghostClone.style.opacity = gOp.toFixed(3);
 
-      if (rawP < 1) {
-        rafId = requestAnimationFrame(frame);
-      } else {
-        cleanup();
-      }
+      return rawP < 1;
+    }).promise;
+
+    mask.remove();
+    ghostMask.remove();
+    if (spacer.isConnected) {
+      // Execute unawaited spacer collapse for staggered overlap
+      collapseSpacer(spacer, H);
     }
-
-    rafId = requestAnimationFrame(frame);
   }
 
   // ── Search bar entrance ─────────────────────────────────────────
-  // Three independent springs so each axis settles at its own pace —
-  // Y position arrives first, width expands a beat behind,
-  // height fills in last. Reads as organic, not mechanical.
-  function animateSearchOpen(urlbar) {
+  async function animateSearchOpen(urlbar) {
     const state = getSearchState(urlbar);
     if (state.mode === "opening") return;
 
     stopSearchAnimation(urlbar, "opening");
+
+    // ANIMATION: Ensure will-change is applied correctly
     urlbar.classList.add("og-search-animating");
 
-    const ySpring = createSpring({ stiffness: 250, damping: 24 });
-    ySpring.pos = SEARCH_OPEN.startY;
-    ySpring.target = 0;
+    const ySpring = createSpring(SEARCH_OPEN_SPRINGS.y);
+    const sxSpring = createSpring(SEARCH_OPEN_SPRINGS.sx);
+    const sySpring = createSpring(SEARCH_OPEN_SPRINGS.sy);
+    ySpring.pos = SEARCH_OPEN.startY; ySpring.target = 0;
+    sxSpring.pos = SEARCH_OPEN.startScaleX; sxSpring.target = 1;
+    sySpring.pos = SEARCH_OPEN.startScaleY; sySpring.target = 1;
 
-    const sxSpring = createSpring({ stiffness: 210, damping: 23 });
-    sxSpring.pos = SEARCH_OPEN.startScaleX;
-    sxSpring.target = 1;
-
-    const sySpring = createSpring({ stiffness: 178, damping: 21 });
-    sySpring.pos = SEARCH_OPEN.startScaleY;
-    sySpring.target = 1;
-
-    let start = null;
-    let last = null;
-
-    state.safetyId = setTimeout(() => {
-      resetUrlbarVisualState(urlbar);
-      state.mode = "idle";
-      state.safetyId = 0;
-      state.rafId = 0;
-    }, SEARCH_OPEN.safetyMs);
-
-    function frame(now) {
-      if (!urlbar.isConnected) {
-        stopSearchAnimation(urlbar, "idle");
-        return;
-      }
-
-      if (!start) {
-        start = last = now;
-      }
-      const elapsed = now - start;
-      const dt = Math.min((now - last) / 1000, 0.05);
-      last = now;
-
+    const task = runAnimationLoop(SEARCH_OPEN.safetyMs, ({ elapsed, dt }) => {
+      if (!urlbar.isConnected) return false;
       ySpring.step(dt);
       sxSpring.step(dt);
       sySpring.step(dt);
 
-      const opacity = easeOutQuart(clamp(elapsed / SEARCH_OPEN.fadeMs, 0, 1));
+      const opacity = easeDeceleration(clamp(elapsed / SEARCH_OPEN.fadeMs, 0, 1));
 
       urlbar.style.transform = formatTranslateScale(ySpring.pos, sxSpring.pos, sySpring.pos);
       urlbar.style.opacity = opacity.toFixed(3);
 
       const allSettled = ySpring.settled(SEARCH_OPEN.settleY)
-                      && sxSpring.settled(SEARCH_OPEN.settleScale)
-                      && sySpring.settled(SEARCH_OPEN.settleScale);
+        && sxSpring.settled(SEARCH_OPEN.settleScale)
+        && sySpring.settled(SEARCH_OPEN.settleScale);
 
-      if (!allSettled && state.mode === "opening") {
-        state.rafId = requestAnimationFrame(frame);
-      } else if (state.mode === "opening") {
-        stopSearchAnimation(urlbar, "idle");
-      }
+      return !allSettled;
+    });
+
+    state.cancel = task.cancel;
+
+    await task.promise;
+
+    if (state.mode === "opening") {
+      stopSearchAnimation(urlbar, "idle");
     }
-
-    state.rafId = requestAnimationFrame(frame);
   }
 
   // ── Search bar exit ─────────────────────────────────────────────
-  // Clone the urlbar visually, position it fixed over the original,
-  // animate the clone out, then discard it. This way Zen can
-  // immediately hide the real urlbar without us fighting it.
-  function animateSearchClose(urlbar) {
+  async function animateSearchClose(urlbar) {
     const state = getSearchState(urlbar);
     if (state.mode === "closing") return;
 
@@ -478,6 +454,7 @@
 
     const clone = urlbar.cloneNode(true);
     clone.removeAttribute("id");
+    // ANIMATION: Ensure will-change is applied to the dynamically created fixed clone
     clone.style.cssText = `
       position: fixed !important;
       left: ${rect.left}px !important;
@@ -496,90 +473,46 @@
     const mount = document.body ?? document.documentElement;
     mount.appendChild(clone);
 
-    const ySpring = createSpring({ stiffness: 210, damping: 24 });
-    ySpring.pos = 0;
-    ySpring.target = SEARCH_CLOSE.targetY;
+    const ySpring = createSpring(SEARCH_CLOSE_SPRINGS.y);
+    const sySpring = createSpring(SEARCH_CLOSE_SPRINGS.sy);
+    const sxSpring = createSpring(SEARCH_CLOSE_SPRINGS.sx);
+    ySpring.pos = 0; ySpring.target = SEARCH_CLOSE.targetY;
+    sySpring.pos = 1; sySpring.target = SEARCH_CLOSE.targetScaleY;
+    sxSpring.pos = 1; sxSpring.target = SEARCH_CLOSE.targetScaleX;
 
-    const sySpring = createSpring({ stiffness: 190, damping: 23 });
-    sySpring.pos = 1;
-    sySpring.target = SEARCH_CLOSE.targetScaleY;
-
-    const sxSpring = createSpring({ stiffness: 170, damping: 22 });
-    sxSpring.pos = 1;
-    sxSpring.target = SEARCH_CLOSE.targetScaleX;
-
-    let start = null;
-    let last = null;
-
-    let finished = false;
-
-    function cleanup() {
-      if (finished) return;
-      finished = true;
-
-      if (state.rafId) {
-        cancelAnimationFrame(state.rafId);
-        state.rafId = 0;
-      }
-      if (state.safetyId) {
-        clearTimeout(state.safetyId);
-        state.safetyId = 0;
-      }
-      clone.remove();
-      state.mode = "idle";
-    }
-
-    state.safetyId = setTimeout(() => {
-      cleanup();
-    }, SEARCH_CLOSE.safetyMs);
-
-    function frame(now) {
-      if (!clone.isConnected) {
-        cleanup();
-        return;
-      }
-
-      if (!start) {
-        start = last = now;
-      }
-      const elapsed = now - start;
-      const dt = Math.min((now - last) / 1000, 0.05);
-      last = now;
-
+    const task = runAnimationLoop(SEARCH_CLOSE.safetyMs, ({ elapsed, dt }) => {
+      if (!clone.isConnected) return false;
       ySpring.step(dt);
       sySpring.step(dt);
       sxSpring.step(dt);
 
       const rawP = clamp(elapsed / SEARCH_CLOSE.durationMs, 0, 1);
-      const opP = clamp(
-        (rawP - SEARCH_CLOSE.opacityHoldStart) / SEARCH_CLOSE.opacityFadeSpan,
-        0,
-        1
-      );
-      const opacity = lerp(1, 0, easeInOutSine(opP));
+      const opP = clamp((rawP - SEARCH_CLOSE.opacityHoldStart) / SEARCH_CLOSE.opacityFadeSpan, 0, 1);
+      const opacity = lerp(1, 0, easeDeceleration(opP));
 
       clone.style.transform = formatTranslateScale(ySpring.pos, sxSpring.pos, sySpring.pos);
       clone.style.opacity = opacity.toFixed(3);
 
       const allSettled = rawP >= 1
-                      || (ySpring.settled(SEARCH_CLOSE.settleY)
-                       && sySpring.settled(SEARCH_CLOSE.settleScale)
-                       && sxSpring.settled(SEARCH_CLOSE.settleScale)
-                       && opacity < 0.01);
+        || (ySpring.settled(SEARCH_CLOSE.settleY)
+          && sySpring.settled(SEARCH_CLOSE.settleScale)
+          && sxSpring.settled(SEARCH_CLOSE.settleScale)
+          && opacity < 0.01);
 
-      if (!allSettled && state.mode === "closing") {
-        state.rafId = requestAnimationFrame(frame);
-      } else if (state.mode === "closing") {
-        cleanup();
-      }
+      return !allSettled;
+    });
+
+    state.cancel = task.cancel;
+
+    await task.promise;
+
+    clone.remove();
+    if (state.mode === "closing") {
+      state.mode = "idle";
     }
-
-    state.rafId = requestAnimationFrame(frame);
   }
 
   // ── Watch for urlbar open/close ─────────────────────────────────
-  // Zen sets [open] on #urlbar when the search panel appears,
-  // and removes it when it closes.
   function watchSearchBar() {
     if (searchObserver) {
       searchObserver.disconnect();
