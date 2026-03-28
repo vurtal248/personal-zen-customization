@@ -18,34 +18,31 @@
   };
 
   const TAB_CLOSE = {
-    // REVIEWED: durations and timings preserved from original to maintain specific behavioral traits
-    durationMs: 800,
-    safetyMs: 1380,
-    antiMs: 72,
-    antiPx: 2.2,
-    ghostDelayMs: 88,
-    shineDurationMs: 340,
-    opacityStart: 0.58,
-    opacitySpan: 0.42,
-    ghostTravelFactor: 0.85,
-    blurMaxPx: 7.5,
-    travelFactor: 1.02,
-    ghostOpacityStart: 0.24,
-    shinePeakOpacity: 0.46,
-    shineSkewDeg: -16,
-    // REFACTOR: Extracted magic numbers for shine
+    durationMs: 650,
+    safetyMs: 1200,
+    antiMs: 90,
+    antiPx: 3.5,
+    ghostDelayMs: 45,
+    shineDurationMs: 500,
+    opacityStart: 0.4,
+    opacitySpan: 0.6,
+    ghostTravelFactor: 0.92,
+    blurMaxPx: 12.0,
+    travelFactor: 1.05,
+    ghostOpacityStart: 0.35,
+    shinePeakOpacity: 0.60,
+    shineSkewDeg: -22,
     shineStartX: -110,
     shineEndX: 194,
-    settledPx: 0.38,
-    // REFACTOR: Extracted magic spring/stiffness numbers
-    spacerSpring: { stiffness: 114, damping: 19 },
-    ghostFadeOffset: 0.18,
-    ghostFadeSpan: 0.82,
-    spacerRemoveSafetyMs: 900,
+    settledPx: 0.1,
+    spacerSpring: { stiffness: 220, damping: 24 },
+    ghostFadeOffset: 0.12,
+    ghostFadeSpan: 0.88,
+    spacerRemoveSafetyMs: 800,
   };
 
   const SEARCH_OPEN = {
-    fadeMs: 150,
+    fadeMs: 200,
     safetyMs: 700,
     startY: 14,
     startScaleX: 0.92,
@@ -54,30 +51,28 @@
     settleScale: 0.0004,
   };
 
-  // REFACTOR: Extracting magic spring values
   const SEARCH_OPEN_SPRINGS = {
-    y: { stiffness: 250, damping: 24 },
-    sx: { stiffness: 210, damping: 23 },
-    sy: { stiffness: 178, damping: 21 },
+    y: { stiffness: 300, damping: 28 },
+    sx: { stiffness: 260, damping: 25 },
+    sy: { stiffness: 220, damping: 23 },
   };
 
   const SEARCH_CLOSE = {
-    durationMs: 380,
-    safetyMs: 560,
+    durationMs: 320,
+    safetyMs: 500,
     targetY: 18,
     targetScaleX: 0.91,
     targetScaleY: 0.74,
-    opacityHoldStart: 0.1,
-    opacityFadeSpan: 0.9,
+    opacityHoldStart: 0.05,
+    opacityFadeSpan: 0.95,
     settleY: 0.08,
     settleScale: 0.0004,
   };
 
-  // REFACTOR: Extracting magic spring values
   const SEARCH_CLOSE_SPRINGS = {
-    y: { stiffness: 210, damping: 24 },
-    sy: { stiffness: 190, damping: 23 },
-    sx: { stiffness: 170, damping: 22 },
+    y: { stiffness: 280, damping: 26 },
+    sy: { stiffness: 240, damping: 24 },
+    sx: { stiffness: 200, damping: 22 },
   };
 
   const searchAnimationState = new WeakMap();
@@ -167,11 +162,9 @@
   }
 
   // ── Easings ─────────────────────────────────────────────────────
-  // REVIEWED: Preserving exact custom easing curves as they are required for behavioral specificities.
-  // Not replacing with physically-motivated bezier since non-linear custom curves were fully deliberate.
-  const easeInExpo = t => t === 0 ? 0 : Math.pow(2, 10 * t - 10);
-  const easeOutQuart = t => 1 - Math.pow(1 - t, 4);
-  const easeInOutSine = t => -(Math.cos(Math.PI * t) - 1) / 2;
+  const easeInQuint = t => t * t * t * t * t;
+  const easeOutQuint = t => 1 - Math.pow(1 - t, 5);
+  const easeInOutCubic = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
   const lerp = (a, b, t) => a + (b - a) * t;
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -339,24 +332,23 @@
 
       const exitP = clamp((elapsed - TAB_CLOSE.antiMs) / (TAB_CLOSE.durationMs - TAB_CLOSE.antiMs), 0, 1);
 
-      // RESTORED: use pristine mathematical easing for custom behavioral slide physics
-      const slideP = easeInExpo(exitP);
+      const slideP = easeInQuint(exitP);
       const tx = antX + lerp(0, travel, slideP);
 
       const opP = clamp((rawP - TAB_CLOSE.opacityStart) / TAB_CLOSE.opacitySpan, 0, 1);
-      const opacity = lerp(1, 0, easeInOutSine(opP));
-      const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeInOutSine(opP));
+      const opacity = lerp(1, 0, easeInOutCubic(opP));
+      const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeInOutCubic(opP));
 
       const shineP = clamp(elapsed / TAB_CLOSE.shineDurationMs, 0, 1);
-      const shineX = lerp(TAB_CLOSE.shineStartX, TAB_CLOSE.shineEndX, easeOutQuart(shineP));
+      const shineX = lerp(TAB_CLOSE.shineStartX, TAB_CLOSE.shineEndX, easeOutQuint(shineP));
       const shineOp = shineP < 0.5
-        ? lerp(0, TAB_CLOSE.shinePeakOpacity, easeInOutSine(shineP / 0.5))
-        : lerp(TAB_CLOSE.shinePeakOpacity, 0, easeInOutSine((shineP - 0.5) / 0.5));
+        ? lerp(0, TAB_CLOSE.shinePeakOpacity, easeInOutCubic(shineP / 0.5))
+        : lerp(TAB_CLOSE.shinePeakOpacity, 0, easeInOutCubic((shineP - 0.5) / 0.5));
 
       const gElapsed = Math.max(0, elapsed - TAB_CLOSE.ghostDelayMs);
       const gExitP = clamp((gElapsed - TAB_CLOSE.antiMs) / (TAB_CLOSE.durationMs - TAB_CLOSE.antiMs), 0, 1);
-      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeInOutSine(gExitP));
-      const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeOutQuart(
+      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeInOutCubic(gExitP));
+      const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeOutQuint(
         clamp((gElapsed / TAB_CLOSE.durationMs - TAB_CLOSE.ghostFadeOffset) / TAB_CLOSE.ghostFadeSpan, 0, 1)
       ));
 
@@ -405,7 +397,7 @@
       sxSpring.step(dt);
       sySpring.step(dt);
 
-      const opacity = easeOutQuart(clamp(elapsed / SEARCH_OPEN.fadeMs, 0, 1));
+      const opacity = easeOutQuint(clamp(elapsed / SEARCH_OPEN.fadeMs, 0, 1));
 
       urlbar.style.transform = formatTranslateScale(ySpring.pos, sxSpring.pos, sySpring.pos);
       urlbar.style.opacity = opacity.toFixed(3);
@@ -475,7 +467,7 @@
 
       const rawP = clamp(elapsed / SEARCH_CLOSE.durationMs, 0, 1);
       const opP = clamp((rawP - SEARCH_CLOSE.opacityHoldStart) / SEARCH_CLOSE.opacityFadeSpan, 0, 1);
-      const opacity = lerp(1, 0, easeInOutSine(opP));
+      const opacity = lerp(1, 0, easeInOutCubic(opP));
 
       clone.style.transform = formatTranslateScale(ySpring.pos, sxSpring.pos, sySpring.pos);
       clone.style.opacity = opacity.toFixed(3);
