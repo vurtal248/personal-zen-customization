@@ -18,61 +18,61 @@
   };
 
   const TAB_CLOSE = {
-    durationMs: 650,
-    safetyMs: 1200,
-    antiMs: 90,
-    antiPx: 3.5,
-    ghostDelayMs: 45,
-    shineDurationMs: 500,
-    opacityStart: 0.4,
-    opacitySpan: 0.6,
-    ghostTravelFactor: 0.92,
-    blurMaxPx: 12.0,
-    travelFactor: 1.05,
-    ghostOpacityStart: 0.35,
-    shinePeakOpacity: 0.60,
-    shineSkewDeg: -22,
-    shineStartX: -110,
-    shineEndX: 194,
-    settledPx: 0.1,
-    spacerSpring: { stiffness: 220, damping: 24 },
-    ghostFadeOffset: 0.12,
-    ghostFadeSpan: 0.88,
-    spacerRemoveSafetyMs: 800,
+    durationMs: 750,
+    safetyMs: 1500,
+    antiMs: 120,
+    antiPx: 6.0,
+    ghostDelayMs: 60,
+    shineDurationMs: 600,
+    opacityStart: 0.3,
+    opacitySpan: 0.7,
+    ghostTravelFactor: 0.85,
+    blurMaxPx: 18.0,
+    travelFactor: 1.15,
+    ghostOpacityStart: 0.45,
+    shinePeakOpacity: 0.85,
+    shineSkewDeg: -28,
+    shineStartX: -120,
+    shineEndX: 220,
+    settledPx: 0.05,
+    spacerSpring: { stiffness: 350, damping: 32 },
+    ghostFadeOffset: 0.1,
+    ghostFadeSpan: 0.9,
+    spacerRemoveSafetyMs: 1000,
   };
 
   const SEARCH_OPEN = {
-    fadeMs: 200,
-    safetyMs: 700,
-    startY: 14,
-    startScaleX: 0.92,
-    startScaleY: 0.82,
-    settleY: 0.06,
-    settleScale: 0.0004,
+    fadeMs: 250,
+    safetyMs: 800,
+    startY: 22,
+    startScaleX: 0.95,
+    startScaleY: 0.88,
+    settleY: 0.01,
+    settleScale: 0.0001,
   };
 
   const SEARCH_OPEN_SPRINGS = {
-    y: { stiffness: 300, damping: 28 },
-    sx: { stiffness: 260, damping: 25 },
-    sy: { stiffness: 220, damping: 23 },
+    y: { stiffness: 450, damping: 36 },
+    sx: { stiffness: 400, damping: 33 },
+    sy: { stiffness: 350, damping: 30 },
   };
 
   const SEARCH_CLOSE = {
-    durationMs: 320,
-    safetyMs: 500,
-    targetY: 18,
-    targetScaleX: 0.91,
-    targetScaleY: 0.74,
-    opacityHoldStart: 0.05,
-    opacityFadeSpan: 0.95,
-    settleY: 0.08,
-    settleScale: 0.0004,
+    durationMs: 400,
+    safetyMs: 600,
+    targetY: 28,
+    targetScaleX: 0.94,
+    targetScaleY: 0.82,
+    opacityHoldStart: 0.0,
+    opacityFadeSpan: 1.0,
+    settleY: 0.02,
+    settleScale: 0.0001,
   };
 
   const SEARCH_CLOSE_SPRINGS = {
-    y: { stiffness: 280, damping: 26 },
-    sy: { stiffness: 240, damping: 24 },
-    sx: { stiffness: 200, damping: 22 },
+    y: { stiffness: 380, damping: 34 },
+    sy: { stiffness: 320, damping: 30 },
+    sx: { stiffness: 280, damping: 28 },
   };
 
   const searchAnimationState = new WeakMap();
@@ -117,9 +117,9 @@
         background: linear-gradient(
           108deg,
           transparent              0%,
-          rgba(255,255,255,0.00)  35%,
-          rgba(255,255,255,0.26)  50%,
-          rgba(255,255,255,0.00)  65%,
+          rgba(255,255,255,0.00)  38%,
+          rgba(255,255,255,0.50)  50%,
+          rgba(255,255,255,0.00)  62%,
           transparent             100%
         ) !important;
       }
@@ -162,9 +162,9 @@
   }
 
   // ── Easings ─────────────────────────────────────────────────────
-  const easeInQuint = t => t * t * t * t * t;
-  const easeOutQuint = t => 1 - Math.pow(1 - t, 5);
-  const easeInOutCubic = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const easeInExpo = t => t === 0 ? 0 : Math.pow(2, 10 * t - 10);
+  const easeOutExpo = t => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
+  const easeInOutExpo = t => t === 0 ? 0 : t === 1 ? 1 : t < 0.5 ? Math.pow(2, 20 * t - 10) / 2 : (2 - Math.pow(2, -10 * (2 * t - 1))) / 2;
 
   const lerp = (a, b, t) => a + (b - a) * t;
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -332,23 +332,23 @@
 
       const exitP = clamp((elapsed - TAB_CLOSE.antiMs) / (TAB_CLOSE.durationMs - TAB_CLOSE.antiMs), 0, 1);
 
-      const slideP = easeInQuint(exitP);
+      const slideP = easeInExpo(exitP);
       const tx = antX + lerp(0, travel, slideP);
 
       const opP = clamp((rawP - TAB_CLOSE.opacityStart) / TAB_CLOSE.opacitySpan, 0, 1);
-      const opacity = lerp(1, 0, easeInOutCubic(opP));
-      const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeInOutCubic(opP));
+      const opacity = lerp(1, 0, easeInOutExpo(opP));
+      const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeInOutExpo(opP));
 
       const shineP = clamp(elapsed / TAB_CLOSE.shineDurationMs, 0, 1);
-      const shineX = lerp(TAB_CLOSE.shineStartX, TAB_CLOSE.shineEndX, easeOutQuint(shineP));
+      const shineX = lerp(TAB_CLOSE.shineStartX, TAB_CLOSE.shineEndX, easeOutExpo(shineP));
       const shineOp = shineP < 0.5
-        ? lerp(0, TAB_CLOSE.shinePeakOpacity, easeInOutCubic(shineP / 0.5))
-        : lerp(TAB_CLOSE.shinePeakOpacity, 0, easeInOutCubic((shineP - 0.5) / 0.5));
+        ? lerp(0, TAB_CLOSE.shinePeakOpacity, easeInOutExpo(shineP / 0.5))
+        : lerp(TAB_CLOSE.shinePeakOpacity, 0, easeInOutExpo((shineP - 0.5) / 0.5));
 
       const gElapsed = Math.max(0, elapsed - TAB_CLOSE.ghostDelayMs);
       const gExitP = clamp((gElapsed - TAB_CLOSE.antiMs) / (TAB_CLOSE.durationMs - TAB_CLOSE.antiMs), 0, 1);
-      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeInOutCubic(gExitP));
-      const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeOutQuint(
+      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeInOutExpo(gExitP));
+      const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeOutExpo(
         clamp((gElapsed / TAB_CLOSE.durationMs - TAB_CLOSE.ghostFadeOffset) / TAB_CLOSE.ghostFadeSpan, 0, 1)
       ));
 
@@ -397,7 +397,7 @@
       sxSpring.step(dt);
       sySpring.step(dt);
 
-      const opacity = easeOutQuint(clamp(elapsed / SEARCH_OPEN.fadeMs, 0, 1));
+      const opacity = easeOutExpo(clamp(elapsed / SEARCH_OPEN.fadeMs, 0, 1));
 
       urlbar.style.transform = formatTranslateScale(ySpring.pos, sxSpring.pos, sySpring.pos);
       urlbar.style.opacity = opacity.toFixed(3);
@@ -467,7 +467,7 @@
 
       const rawP = clamp(elapsed / SEARCH_CLOSE.durationMs, 0, 1);
       const opP = clamp((rawP - SEARCH_CLOSE.opacityHoldStart) / SEARCH_CLOSE.opacityFadeSpan, 0, 1);
-      const opacity = lerp(1, 0, easeInOutCubic(opP));
+      const opacity = lerp(1, 0, easeInOutExpo(opP));
 
       clone.style.transform = formatTranslateScale(ySpring.pos, sxSpring.pos, sySpring.pos);
       clone.style.opacity = opacity.toFixed(3);
