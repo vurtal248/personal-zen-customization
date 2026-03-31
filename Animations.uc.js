@@ -18,51 +18,51 @@
   };
 
   const TAB_CLOSE = {
-    durationMs: 750,
-    safetyMs: 1500,
-    antiMs: 120,
-    antiPx: 6.0,
-    ghostDelayMs: 60,
-    shineDurationMs: 600,
-    opacityStart: 0.3,
-    opacitySpan: 0.7,
-    ghostTravelFactor: 0.85,
-    blurMaxPx: 18.0,
-    travelFactor: 1.15,
-    ghostOpacityStart: 0.45,
-    shinePeakOpacity: 0.85,
+    durationMs: 850,
+    safetyMs: 1800,
+    antiMs: 160,
+    antiPx: 8.0,
+    ghostDelayMs: 80,
+    shineDurationMs: 700,
+    opacityStart: 0.35,
+    opacitySpan: 0.65,
+    ghostTravelFactor: 0.8,
+    blurMaxPx: 24.0,
+    travelFactor: 1.25,
+    ghostOpacityStart: 0.5,
+    shinePeakOpacity: 0.9,
     shineSkewDeg: -28,
     shineStartX: -120,
     shineEndX: 220,
     settledPx: 0.05,
-    spacerSpring: { stiffness: 350, damping: 32 },
+    spacerSpring: { stiffness: 220, damping: 26 },
     ghostFadeOffset: 0.1,
     ghostFadeSpan: 0.9,
-    spacerRemoveSafetyMs: 1000,
+    spacerRemoveSafetyMs: 1200,
   };
 
   const SEARCH_OPEN = {
-    fadeMs: 250,
-    safetyMs: 800,
-    startY: 22,
-    startScaleX: 0.95,
-    startScaleY: 0.88,
+    fadeMs: 300,
+    safetyMs: 1000,
+    startY: 25,
+    startScaleX: 0.92,
+    startScaleY: 0.85,
     settleY: 0.01,
     settleScale: 0.0001,
   };
 
   const SEARCH_OPEN_SPRINGS = {
-    y: { stiffness: 450, damping: 36 },
-    sx: { stiffness: 400, damping: 33 },
-    sy: { stiffness: 350, damping: 30 },
+    y: { stiffness: 320, damping: 28 },
+    sx: { stiffness: 280, damping: 25 },
+    sy: { stiffness: 280, damping: 25 },
   };
 
   const SEARCH_CLOSE = {
-    durationMs: 400,
-    safetyMs: 600,
-    targetY: 28,
-    targetScaleX: 0.94,
-    targetScaleY: 0.82,
+    durationMs: 450,
+    safetyMs: 800,
+    targetY: 30,
+    targetScaleX: 0.92,
+    targetScaleY: 0.85,
     opacityHoldStart: 0.0,
     opacityFadeSpan: 1.0,
     settleY: 0.02,
@@ -70,9 +70,9 @@
   };
 
   const SEARCH_CLOSE_SPRINGS = {
-    y: { stiffness: 380, damping: 34 },
-    sy: { stiffness: 320, damping: 30 },
-    sx: { stiffness: 280, damping: 28 },
+    y: { stiffness: 250, damping: 24 },
+    sy: { stiffness: 220, damping: 22 },
+    sx: { stiffness: 200, damping: 20 },
   };
 
   const searchAnimationState = new WeakMap();
