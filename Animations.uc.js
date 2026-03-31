@@ -18,51 +18,51 @@
   };
 
   const TAB_CLOSE = {
-    durationMs: 850,
+    durationMs: 800,
     safetyMs: 1800,
-    antiMs: 160,
-    antiPx: 8.0,
-    ghostDelayMs: 80,
-    shineDurationMs: 700,
-    opacityStart: 0.35,
-    opacitySpan: 0.65,
-    ghostTravelFactor: 0.8,
-    blurMaxPx: 24.0,
-    travelFactor: 1.25,
-    ghostOpacityStart: 0.5,
-    shinePeakOpacity: 0.9,
+    antiMs: 180,
+    antiPx: 12.0,
+    ghostDelayMs: 90,
+    shineDurationMs: 650,
+    opacityStart: 0.25,
+    opacitySpan: 0.75,
+    ghostTravelFactor: 0.85,
+    blurMaxPx: 32.0,
+    travelFactor: 1.35,
+    ghostOpacityStart: 0.6,
+    shinePeakOpacity: 0.85,
     shineSkewDeg: -28,
     shineStartX: -120,
     shineEndX: 220,
     settledPx: 0.05,
-    spacerSpring: { stiffness: 220, damping: 26 },
+    spacerSpring: { stiffness: 340, damping: 32 },
     ghostFadeOffset: 0.1,
     ghostFadeSpan: 0.9,
     spacerRemoveSafetyMs: 1200,
   };
 
   const SEARCH_OPEN = {
-    fadeMs: 300,
-    safetyMs: 1000,
-    startY: 25,
-    startScaleX: 0.92,
-    startScaleY: 0.85,
+    fadeMs: 350,
+    safetyMs: 1200,
+    startY: 32,
+    startScaleX: 0.94,
+    startScaleY: 0.88,
     settleY: 0.01,
     settleScale: 0.0001,
   };
 
   const SEARCH_OPEN_SPRINGS = {
-    y: { stiffness: 320, damping: 28 },
-    sx: { stiffness: 280, damping: 25 },
-    sy: { stiffness: 280, damping: 25 },
+    y: { stiffness: 420, damping: 34 },
+    sx: { stiffness: 380, damping: 30 },
+    sy: { stiffness: 380, damping: 30 },
   };
 
   const SEARCH_CLOSE = {
     durationMs: 450,
     safetyMs: 800,
-    targetY: 30,
-    targetScaleX: 0.92,
-    targetScaleY: 0.85,
+    targetY: 36,
+    targetScaleX: 0.94,
+    targetScaleY: 0.88,
     opacityHoldStart: 0.0,
     opacityFadeSpan: 1.0,
     settleY: 0.02,
@@ -70,9 +70,9 @@
   };
 
   const SEARCH_CLOSE_SPRINGS = {
-    y: { stiffness: 250, damping: 24 },
-    sy: { stiffness: 220, damping: 22 },
-    sx: { stiffness: 200, damping: 20 },
+    y: { stiffness: 340, damping: 32 },
+    sy: { stiffness: 280, damping: 28 },
+    sx: { stiffness: 280, damping: 28 },
   };
 
   const searchAnimationState = new WeakMap();
@@ -162,9 +162,10 @@
   }
 
   // ── Easings ─────────────────────────────────────────────────────
-  const easeInExpo = t => t === 0 ? 0 : Math.pow(2, 10 * t - 10);
-  const easeOutExpo = t => t === 1 ? 1 : 1 - Math.pow(2, -10 * t);
-  const easeInOutExpo = t => t === 0 ? 0 : t === 1 ? 1 : t < 0.5 ? Math.pow(2, 20 * t - 10) / 2 : (2 - Math.pow(2, -10 * (2 * t - 1))) / 2;
+  // Replaced harsh Expo curves with luxurious Quintic blends for fluidity
+  const easeInExpo = t => t * t * t * t * t;
+  const easeOutExpo = t => 1 - Math.pow(1 - t, 5);
+  const easeInOutExpo = t => t < 0.5 ? 16 * t * t * t * t * t : 1 - Math.pow(-2 * t + 2, 5) / 2;
 
   const lerp = (a, b, t) => a + (b - a) * t;
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
