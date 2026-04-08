@@ -35,7 +35,7 @@
     shineStartX: -120,
     shineEndX: 220,
     settledPx: 0.05,
-    spacerSpring: { stiffness: 300, damping: 32 },
+    spacerSpring: { stiffness: 280, damping: 32 },
     ghostFadeOffset: 0.1,
     ghostFadeSpan: 0.9,
     spacerRemoveSafetyMs: 1200,
