@@ -1,6 +1,11 @@
 # personal-zen-customization
 Just a sine mod tailored for me
 
+Features:
+
+- Smooth tab closing animation
+- Search bar appear/disappear animation
+
 How to install:
 
 1. Download [Sine](https://github.com/CosmoCreeper/Sine) for Zen Browser
@@ -11,5 +16,7 @@ How to install:
 
    
 3. Copy and paste this link: https://github.com/vurtal248/personal-zen-customization into here
+
+   Located just under the sine mod marketplace
    
 <img width="445" height="90" alt="image" src="https://github.com/user-attachments/assets/8251ba8b-9c79-4579-a01d-55fda9254425" />
