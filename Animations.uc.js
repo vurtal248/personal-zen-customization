@@ -38,7 +38,7 @@
     spacerSpring: { stiffness: 280, damping: 32 },
     ghostFadeOffset: 0.1,
     ghostFadeSpan: 0.9,
-    spacerRemoveSafetyMs: 1000,
+    spacerRemoveSafetyMs: 800,
   };
 
   const SEARCH_OPEN = {
