@@ -18,49 +18,49 @@
   };
 
   const TAB_CLOSE = {
-    durationMs: 800,
-    safetyMs: 1800,
-    antiMs: 180,
-    antiPx: 12.0,
+    durationMs: 680,
+    safetyMs: 1600,
+    antiMs: 140,
+    antiPx: 8.0,
     ghostDelayMs: 90,
-    shineDurationMs: 650,
+    shineDurationMs: 580,
     opacityStart: 0.25,
     opacitySpan: 0.75,
-    ghostTravelFactor: 0.85,
-    blurMaxPx: 32.0,
+    ghostTravelFactor: 0.72,
+    blurMaxPx: 18.0,
     travelFactor: 1.35,
-    ghostOpacityStart: 0.6,
-    shinePeakOpacity: 0.85,
+    ghostOpacityStart: 0.45,
+    shinePeakOpacity: 0.55,
     shineSkewDeg: -28,
-    shineStartX: -120,
+    shineStartX: -140,
     shineEndX: 220,
     settledPx: 0.05,
-    spacerSpring: { stiffness: 280, damping: 32 },
+    spacerSpring: { stiffness: 320, damping: 36 },
     ghostFadeOffset: 0.1,
     ghostFadeSpan: 0.9,
     spacerRemoveSafetyMs: 800,
   };
 
   const SEARCH_OPEN = {
-    fadeMs: 350,
+    fadeMs: 280,
     safetyMs: 1200,
-    startY: 32,
+    startY: 24,
     startScaleX: 0.94,
-    startScaleY: 0.88,
+    startScaleY: 0.92,
     settleY: 0.01,
     settleScale: 0.0001,
   };
 
   const SEARCH_OPEN_SPRINGS = {
-    y: { stiffness: 420, damping: 34 },
-    sx: { stiffness: 380, damping: 30 },
-    sy: { stiffness: 380, damping: 30 },
+    y: { stiffness: 480, damping: 38 },
+    sx: { stiffness: 420, damping: 32 },
+    sy: { stiffness: 420, damping: 32 },
   };
 
   const SEARCH_CLOSE = {
-    durationMs: 450,
+    durationMs: 380,
     safetyMs: 800,
-    targetY: 36,
+    targetY: 28,
     targetScaleX: 0.94,
     targetScaleY: 0.88,
     opacityHoldStart: 0.0,
@@ -70,13 +70,12 @@
   };
 
   const SEARCH_CLOSE_SPRINGS = {
-    y: { stiffness: 340, damping: 32 },
-    sy: { stiffness: 280, damping: 28 },
-    sx: { stiffness: 280, damping: 28 },
+    y: { stiffness: 400, damping: 36 },
+    sy: { stiffness: 340, damping: 32 },
+    sx: { stiffness: 340, damping: 32 },
   };
 
   const searchAnimationState = new WeakMap();
-  // REVIEWED: no stagger sequences present in this file or needed for current interactions
   let searchObserver = null;
   let startupObserver = null;
   let tabCloseHandler = null;
@@ -106,7 +105,8 @@
       }
       .og-clone { will-change: transform, opacity, filter !important; }
       .og-ghost {
-        filter:      blur(5px) !important;
+        /* Reduced from 5px — 4px avoids sub-pixel bleed at clone edges */
+        filter:      blur(4px) !important;
         will-change: transform, opacity, filter !important;
       }
       .og-shine {
@@ -154,7 +154,8 @@
         this.pos += this.vel * dt;
         return this.pos;
       },
-      settled(eps = 0.002) {
+      // Slightly looser epsilon — ends springs earlier, fewer unnecessary RAF frames
+      settled(eps = 0.003) {
         return Math.abs(this.pos - this.target) < eps
           && Math.abs(this.vel) < eps;
       },
@@ -468,7 +469,8 @@
 
       const rawP = clamp(elapsed / SEARCH_CLOSE.durationMs, 0, 1);
       const opP = clamp((rawP - SEARCH_CLOSE.opacityHoldStart) / SEARCH_CLOSE.opacityFadeSpan, 0, 1);
-      const opacity = lerp(1, 0, easeInOutExpo(opP));
+      // easeInExpo on exit: fade accelerates INTO invisibility — easeInOutExpo had a sluggish start
+      const opacity = lerp(1, 0, easeInExpo(opP));
 
       clone.style.transform = formatTranslateScale(ySpring.pos, sxSpring.pos, sySpring.pos);
       clone.style.opacity = opacity.toFixed(3);
