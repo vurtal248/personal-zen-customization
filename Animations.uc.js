@@ -18,51 +18,49 @@
   };
 
   const TAB_CLOSE = {
-    durationMs: 680,
-    safetyMs: 1600,
-    antiMs: 140,
-    antiPx: 8.0,
-    ghostDelayMs: 90,
-    shineDurationMs: 580,
-    opacityStart: 0.25,
-    opacitySpan: 0.75,
-    ghostTravelFactor: 0.72,
-    blurMaxPx: 18.0,
-    travelFactor: 1.35,
-    ghostOpacityStart: 0.45,
-    shinePeakOpacity: 0.55,
+    durationMs: 220, // Reduced from 680ms. UI animations must be snappy and < 300ms
+    safetyMs: 600,
+    ghostDelayMs: 0, // Instant movement, no disconnected lag
+    shineDurationMs: 220,
+    opacityStart: 0.0, // Fade out begins instantaneously 
+    opacitySpan: 1.0,
+    ghostTravelFactor: 0.6, // Tighter spatial relationship
+    blurMaxPx: 8.0, // Subtler blur to trick the eye without being heavy
+    travelFactor: 0.8,
+    ghostOpacityStart: 0.4,
+    shinePeakOpacity: 0.35,
     shineSkewDeg: -28,
     shineStartX: -140,
     shineEndX: 220,
     settledPx: 0.05,
-    spacerSpring: { stiffness: 320, damping: 36 },
-    ghostFadeOffset: 0.1,
-    ghostFadeSpan: 0.9,
-    spacerRemoveSafetyMs: 800,
+    spacerSpring: { stiffness: 500, damping: 42 },
+    ghostFadeOffset: 0.0,
+    ghostFadeSpan: 1.0,
+    spacerRemoveSafetyMs: 500,
   };
 
   const SEARCH_OPEN = {
-    fadeMs: 280,
-    safetyMs: 1200,
-    startY: 24,
-    startScaleX: 0.94,
-    startScaleY: 0.92,
+    fadeMs: 120, // Faster entrance transition
+    safetyMs: 600,
+    startY: 8, // Do not animate from too far away
+    startScaleX: 0.97, // Start closer to scale(1) per component building principles
+    startScaleY: 0.95,
     settleY: 0.01,
     settleScale: 0.0001,
   };
 
   const SEARCH_OPEN_SPRINGS = {
-    y: { stiffness: 480, damping: 38 },
-    sx: { stiffness: 420, damping: 32 },
-    sy: { stiffness: 420, damping: 32 },
+    y: { stiffness: 520, damping: 40 }, // Stronger springs for snappier feeling
+    sx: { stiffness: 500, damping: 38 },
+    sy: { stiffness: 500, damping: 38 },
   };
 
   const SEARCH_CLOSE = {
-    durationMs: 380,
-    safetyMs: 800,
-    targetY: 28,
-    targetScaleX: 0.94,
-    targetScaleY: 0.88,
+    durationMs: 140, // Needs immediate acknowledgment of close action
+    safetyMs: 400,
+    targetY: 6,
+    targetScaleX: 0.98,
+    targetScaleY: 0.96,
     opacityHoldStart: 0.0,
     opacityFadeSpan: 1.0,
     settleY: 0.02,
@@ -70,9 +68,9 @@
   };
 
   const SEARCH_CLOSE_SPRINGS = {
-    y: { stiffness: 400, damping: 36 },
-    sy: { stiffness: 340, damping: 32 },
-    sx: { stiffness: 340, damping: 32 },
+    y: { stiffness: 600, damping: 42 },
+    sy: { stiffness: 600, damping: 42 },
+    sx: { stiffness: 600, damping: 42 },
   };
 
   const searchAnimationState = new WeakMap();
@@ -329,27 +327,24 @@
       if (!mask.isConnected || !ghostMask.isConnected) return false;
 
       const rawP = clamp(elapsed / TAB_CLOSE.durationMs, 0, 1);
-      const antP = clamp(elapsed / TAB_CLOSE.antiMs, 0, 1);
-      const antX = Math.sin(antP * Math.PI) * TAB_CLOSE.antiPx;
+      const exitP = rawP; // Removed anti-anticipation completely.
 
-      const exitP = clamp((elapsed - TAB_CLOSE.antiMs) / (TAB_CLOSE.durationMs - TAB_CLOSE.antiMs), 0, 1);
-
-      const slideP = easeInExpo(exitP);
-      const tx = antX + lerp(0, travel, slideP);
+      const slideP = easeOutExpo(exitP); // Use easeOut for instant responsiveness!
+      const tx = lerp(0, travel, slideP);
 
       const opP = clamp((rawP - TAB_CLOSE.opacityStart) / TAB_CLOSE.opacitySpan, 0, 1);
-      const opacity = lerp(1, 0, easeInOutExpo(opP));
-      const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeInOutExpo(opP));
+      const opacity = lerp(1, 0, easeOutExpo(opP)); // Immediate fade
+      const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeOutExpo(opP));
 
       const shineP = clamp(elapsed / TAB_CLOSE.shineDurationMs, 0, 1);
       const shineX = lerp(TAB_CLOSE.shineStartX, TAB_CLOSE.shineEndX, easeOutExpo(shineP));
       const shineOp = shineP < 0.5
-        ? lerp(0, TAB_CLOSE.shinePeakOpacity, easeInOutExpo(shineP / 0.5))
-        : lerp(TAB_CLOSE.shinePeakOpacity, 0, easeInOutExpo((shineP - 0.5) / 0.5));
+        ? lerp(0, TAB_CLOSE.shinePeakOpacity, easeOutExpo(shineP / 0.5))
+        : lerp(TAB_CLOSE.shinePeakOpacity, 0, easeOutExpo((shineP - 0.5) / 0.5));
 
       const gElapsed = Math.max(0, elapsed - TAB_CLOSE.ghostDelayMs);
-      const gExitP = clamp((gElapsed - TAB_CLOSE.antiMs) / (TAB_CLOSE.durationMs - TAB_CLOSE.antiMs), 0, 1);
-      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeInOutExpo(gExitP));
+      const gExitP = clamp(gElapsed / TAB_CLOSE.durationMs, 0, 1);
+      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeOutExpo(gExitP));
       const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeOutExpo(
         clamp((gElapsed / TAB_CLOSE.durationMs - TAB_CLOSE.ghostFadeOffset) / TAB_CLOSE.ghostFadeSpan, 0, 1)
       ));
@@ -445,7 +440,7 @@
       margin: 0 !important;
       pointer-events: none !important;
       z-index: 9999 !important;
-      transform-origin: top center !important;
+      transform-origin: bottom center !important;
       will-change: transform, opacity !important;
       overflow: hidden !important;
       border-radius: 10px !important;
@@ -469,8 +464,8 @@
 
       const rawP = clamp(elapsed / SEARCH_CLOSE.durationMs, 0, 1);
       const opP = clamp((rawP - SEARCH_CLOSE.opacityHoldStart) / SEARCH_CLOSE.opacityFadeSpan, 0, 1);
-      // easeInExpo on exit: fade accelerates INTO invisibility — easeInOutExpo had a sluggish start
-      const opacity = lerp(1, 0, easeInExpo(opP));
+      // easeOutExpo on exit: immediately responds to the user action
+      const opacity = lerp(1, 0, easeOutExpo(opP));
 
       clone.style.transform = formatTranslateScale(ySpring.pos, sxSpring.pos, sySpring.pos);
       clone.style.opacity = opacity.toFixed(3);
