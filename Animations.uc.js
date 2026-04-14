@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name           Animations
-// @version        1.4.8
+// @version        1.4.9
 // @author         vur
 // @description    JS
 // @compatibility  Firefox 100+
