@@ -18,17 +18,17 @@
   };
 
   const TAB_CLOSE = {
-    durationMs: 220, // Reduced from 680ms. UI animations must be snappy and < 300ms
+    durationMs: 280, // Extend slightly to read the slide motion
     safetyMs: 600,
-    ghostDelayMs: 0, // Instant movement, no disconnected lag
-    shineDurationMs: 220,
-    opacityStart: 0.0, // Fade out begins instantaneously 
-    opacitySpan: 1.0,
-    ghostTravelFactor: 0.6, // Tighter spatial relationship
-    blurMaxPx: 8.0, // Subtler blur to trick the eye without being heavy
-    travelFactor: 0.8,
-    ghostOpacityStart: 0.4,
-    shinePeakOpacity: 0.35,
+    ghostDelayMs: 20, // Tiny stagger
+    shineDurationMs: 280,
+    opacityStart: 0.1, // delay the fade starting
+    opacitySpan: 0.9,
+    ghostTravelFactor: 0.72,
+    blurMaxPx: 12.0,
+    travelFactor: 1.25, // Restore the prominent slide distance
+    ghostOpacityStart: 0.45,
+    shinePeakOpacity: 0.4,
     shineSkewDeg: -28,
     shineStartX: -140,
     shineEndX: 220,
@@ -327,14 +327,15 @@
       if (!mask.isConnected || !ghostMask.isConnected) return false;
 
       const rawP = clamp(elapsed / TAB_CLOSE.durationMs, 0, 1);
-      const exitP = rawP; // Removed anti-anticipation completely.
+      const exitP = rawP;
 
-      const slideP = easeOutExpo(exitP); // Use easeOut for instant responsiveness!
+      const slideP = easeOutExpo(exitP); // Transform starts immediately
       const tx = lerp(0, travel, slideP);
 
       const opP = clamp((rawP - TAB_CLOSE.opacityStart) / TAB_CLOSE.opacitySpan, 0, 1);
-      const opacity = lerp(1, 0, easeOutExpo(opP)); // Immediate fade
-      const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeOutExpo(opP));
+      // Let it accelerate into invisibility so we actually see it slide!
+      const opacity = lerp(1, 0, easeInExpo(opP));
+      const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeInExpo(opP));
 
       const shineP = clamp(elapsed / TAB_CLOSE.shineDurationMs, 0, 1);
       const shineX = lerp(TAB_CLOSE.shineStartX, TAB_CLOSE.shineEndX, easeOutExpo(shineP));
@@ -345,7 +346,7 @@
       const gElapsed = Math.max(0, elapsed - TAB_CLOSE.ghostDelayMs);
       const gExitP = clamp(gElapsed / TAB_CLOSE.durationMs, 0, 1);
       const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeOutExpo(gExitP));
-      const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeOutExpo(
+      const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeInExpo(
         clamp((gElapsed / TAB_CLOSE.durationMs - TAB_CLOSE.ghostFadeOffset) / TAB_CLOSE.ghostFadeSpan, 0, 1)
       ));
 
@@ -464,8 +465,8 @@
 
       const rawP = clamp(elapsed / SEARCH_CLOSE.durationMs, 0, 1);
       const opP = clamp((rawP - SEARCH_CLOSE.opacityHoldStart) / SEARCH_CLOSE.opacityFadeSpan, 0, 1);
-      // easeOutExpo on exit: immediately responds to the user action
-      const opacity = lerp(1, 0, easeOutExpo(opP));
+      // Accelerate into invisibility to keep object visually solid while shrinking
+      const opacity = lerp(1, 0, easeInExpo(opP));
 
       clone.style.transform = formatTranslateScale(ySpring.pos, sxSpring.pos, sySpring.pos);
       clone.style.opacity = opacity.toFixed(3);
