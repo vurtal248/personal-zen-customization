@@ -80,9 +80,14 @@
   let unloadHandler = null;
 
   // ── Styles ──────────────────────────────────────────────────────
-  if (!document.getElementById(STYLE_ID)) {
-    const style = document.createElement("style");
-    style.id = STYLE_ID;
+  // Always overwrite — guards prevent CSS updates within the same session.
+  {
+    let style = document.getElementById(STYLE_ID);
+    if (!style) {
+      style = document.createElement("style");
+      style.id = STYLE_ID;
+      document.head?.appendChild(style);
+    }
     style.textContent = `
       /* ── Tab deletion masks ─────────────────────── */
       .og-mask, .og-ghost-mask {
@@ -93,8 +98,8 @@
         overflow:       visible !important;
         border-radius:  6px     !important;
       }
-      .og-mask       { z-index: 9999 !important; }
-      .og-ghost-mask { z-index: 9998 !important; }
+      .og-mask       { z-index: 99999 !important; }
+      .og-ghost-mask { z-index: 99998 !important; }
  
       .og-clone, .og-ghost {
         position: absolute  !important;
@@ -103,7 +108,12 @@
         height:   100%      !important;
         pointer-events: none !important;
       }
-      .og-clone { will-change: transform, opacity, filter !important; }
+      /* DEBUG: red outline to confirm clone is mounted and positioned */
+      .og-clone {
+        will-change: transform, opacity, filter !important;
+        outline: 3px solid red !important;
+        background: rgba(255, 0, 0, 0.15) !important;
+      }
       .og-ghost {
         /* Reduced from 5px — 4px avoids sub-pixel bleed at clone edges */
         filter:      blur(4px) !important;
@@ -137,7 +147,6 @@
         overflow: visible !important;
       }
     `;
-    document.head.appendChild(style);
   }
 
   // ── Spring integrator ───────────────────────────────────────────
