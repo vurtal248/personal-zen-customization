@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name           Animations
-// @version        1.4.11
+// @version        1.4.12
 // @author         vur
 // @description    JS
 // @compatibility  Firefox 100+
@@ -332,12 +332,12 @@
       // Use a cubic curve instead of quintic. A 5th-order curve squishes all movement 
       // into a ~50ms window. At 60hz, that's 3 frames, which the eye reads as a blink.
       // Cubic provides a beautifully pronounced physical slide.
-      const slideP = easeInOutCubic(exitP); 
+      const slideP = easeInOutCubic(exitP);
       const tx = lerp(0, travel, slideP);
 
       const opP = clamp((rawP - TAB_CLOSE.opacityStart) / TAB_CLOSE.opacitySpan, 0, 1);
       // Fade gracefully rather than plummeting
-      const opacity = lerp(1, 0, easeInOutCubic(opP)); 
+      const opacity = lerp(1, 0, easeInOutCubic(opP));
       const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeInOutCubic(opP));
 
       const shineP = clamp(elapsed / TAB_CLOSE.shineDurationMs, 0, 1);
