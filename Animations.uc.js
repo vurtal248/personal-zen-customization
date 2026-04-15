@@ -329,11 +329,11 @@
       const rawP = clamp(elapsed / TAB_CLOSE.durationMs, 0, 1);
       const exitP = rawP;
 
-      const slideP = easeInOutExpo(exitP); 
+      const slideP = easeInOutExpo(exitP);
       const tx = lerp(0, travel, slideP);
 
       const opP = clamp((rawP - TAB_CLOSE.opacityStart) / TAB_CLOSE.opacitySpan, 0, 1);
-      const opacity = lerp(1, 0, easeInExpo(opP)); 
+      const opacity = lerp(1, 0, easeInExpo(opP));
       const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeInExpo(opP));
 
       const shineP = clamp(elapsed / TAB_CLOSE.shineDurationMs, 0, 1);
