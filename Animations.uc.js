@@ -334,6 +334,7 @@
 
     const travel = -(W * TAB_CLOSE.travelFactor);
 
+    let firstFrame = true;
     await runAnimationLoop(TAB_CLOSE.safetyMs, ({ elapsed }) => {
       if (!mask.isConnected || !ghostMask.isConnected) return false;
 
@@ -364,16 +365,22 @@
         clamp((gElapsed / TAB_CLOSE.durationMs - TAB_CLOSE.ghostFadeOffset) / TAB_CLOSE.ghostFadeSpan, 0, 1)
       ));
 
-      // ANIMATION: Replacing implicit left/top with transform:translate for GPU compositor where applicable
-      clone.style.transform = `translateX(${tx.toFixed(2)}px)`;
-      clone.style.opacity = opacity.toFixed(3);
+      if (firstFrame) {
+        firstFrame = false;
+        console.log(`[TabClose] travel=${travel.toFixed(1)}px rect=(${rect.left},${rect.top}) size=${W}x${H}`);
+      }
+
+      // DIAGNOSTIC: Use left/top directly (not transform) to rule out transform issues
+      mask.style.left = `${(rect.left + tx).toFixed(2)}px`;
+      mask.style.opacity = opacity.toFixed(3);
+
       clone.style.filter = `blur(${blurPx.toFixed(2)}px)`;
 
       shine.style.transform = `translateX(${shineX.toFixed(1)}%) skewX(${TAB_CLOSE.shineSkewDeg}deg)`;
       shine.style.opacity = shineOp.toFixed(3);
 
-      ghostClone.style.transform = `translateX(${gTx.toFixed(2)}px)`;
-      ghostClone.style.opacity = gOp.toFixed(3);
+      ghostMask.style.left = `${(rect.left + gTx).toFixed(2)}px`;
+      ghostMask.style.opacity = gOp.toFixed(3);
 
       return rawP < 1;
     }).promise;
