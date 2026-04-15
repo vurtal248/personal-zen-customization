@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name           Animations
-// @version        1.4.15
+// @version        1.4.17
 // @author         vur
 // @description    JS
 // @compatibility  Firefox 100+
@@ -18,15 +18,14 @@
   };
 
   const TAB_CLOSE = {
-    durationMs: 300, // Maximum snappy limit to allow the slide space to be seen
-    safetyMs: 600,
-    ghostDelayMs: 20, // Tiny stagger
+    durationMs: 300,
+    safetyMs: 700,
+    ghostDelayMs: 20,
     shineDurationMs: 300,
-    opacityStart: 0.1, // delay the fade starting
-    opacitySpan: 0.9,
+    opacityStart: 0.15,
+    opacitySpan: 0.85,
     ghostTravelFactor: 0.72,
-    blurMaxPx: 12.0,
-    travelFactor: 1.25, // Restore the prominent slide distance
+    travelFactor: 1.25,
     ghostOpacityStart: 0.45,
     shinePeakOpacity: 0.4,
     shineSkewDeg: -28,
@@ -98,8 +97,8 @@
         overflow:       visible !important;
         border-radius:  6px     !important;
       }
-      .og-mask       { z-index: 99999 !important; }
-      .og-ghost-mask { z-index: 99998 !important; }
+      .og-mask       { z-index: 9999 !important; will-change: left, opacity !important; }
+      .og-ghost-mask { z-index: 9998 !important; will-change: left, opacity !important; }
  
       .og-clone, .og-ghost {
         position: absolute  !important;
@@ -108,16 +107,10 @@
         height:   100%      !important;
         pointer-events: none !important;
       }
-      /* DEBUG: red outline to confirm clone is mounted and positioned */
-      .og-clone {
-        will-change: transform, opacity, filter !important;
-        outline: 3px solid red !important;
-        background: rgba(255, 0, 0, 0.15) !important;
-      }
+      .og-clone { will-change: opacity !important; }
       .og-ghost {
-        /* Reduced from 5px — 4px avoids sub-pixel bleed at clone edges */
         filter:      blur(4px) !important;
-        will-change: transform, opacity, filter !important;
+        will-change: opacity !important;
       }
       .og-shine {
         position:       absolute !important;
@@ -172,9 +165,8 @@
   }
 
   // ── Easings ─────────────────────────────────────────────────────
-  const easeInExpo = t => t * t * t * t * t;
+  const easeInCubic = t => t * t * t;
   const easeOutExpo = t => 1 - Math.pow(1 - t, 5);
-  const easeInOutExpo = t => t < 0.5 ? 16 * t * t * t * t * t : 1 - Math.pow(-2 * t + 2, 5) / 2;
   const easeInOutCubic = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
   const lerp = (a, b, t) => a + (b - a) * t;
@@ -334,24 +326,19 @@
 
     const travel = -(W * TAB_CLOSE.travelFactor);
 
-    let firstFrame = true;
     await runAnimationLoop(TAB_CLOSE.safetyMs, ({ elapsed }) => {
       if (!mask.isConnected || !ghostMask.isConnected) return false;
 
       const rawP = clamp(elapsed / TAB_CLOSE.durationMs, 0, 1);
-      const exitP = rawP;
 
-      // Use a cubic curve instead of quintic. A 5th-order curve squishes all movement 
-      // into a ~50ms window. At 60hz, that's 3 frames, which the eye reads as a blink.
-      // Cubic provides a beautifully pronounced physical slide.
-      const slideP = easeInOutCubic(exitP);
-      const tx = lerp(0, travel, slideP);
+      // Slide: easeInOutCubic — physical feel, gentle start, swift middle
+      const tx = lerp(0, travel, easeInOutCubic(rawP));
 
+      // Opacity: easeInCubic — stays solid while sliding, fades hard at the end
       const opP = clamp((rawP - TAB_CLOSE.opacityStart) / TAB_CLOSE.opacitySpan, 0, 1);
-      // Fade gracefully rather than plummeting
-      const opacity = lerp(1, 0, easeInOutCubic(opP));
-      const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeInOutCubic(opP));
+      const opacity = lerp(1, 0, easeInCubic(opP));
 
+      // Shine sweeps across during exit (plain div — transform works fine here)
       const shineP = clamp(elapsed / TAB_CLOSE.shineDurationMs, 0, 1);
       const shineX = lerp(TAB_CLOSE.shineStartX, TAB_CLOSE.shineEndX, easeOutExpo(shineP));
       const shineOp = shineP < 0.5
@@ -359,22 +346,14 @@
         : lerp(TAB_CLOSE.shinePeakOpacity, 0, easeOutExpo((shineP - 0.5) / 0.5));
 
       const gElapsed = Math.max(0, elapsed - TAB_CLOSE.ghostDelayMs);
-      const gExitP = clamp(gElapsed / TAB_CLOSE.durationMs, 0, 1);
-      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeInOutCubic(gExitP));
-      const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeInOutCubic(
-        clamp((gElapsed / TAB_CLOSE.durationMs - TAB_CLOSE.ghostFadeOffset) / TAB_CLOSE.ghostFadeSpan, 0, 1)
-      ));
+      const gRawP = clamp(gElapsed / TAB_CLOSE.durationMs, 0, 1);
+      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeInOutCubic(gRawP));
+      const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeInCubic(gRawP));
 
-      if (firstFrame) {
-        firstFrame = false;
-        console.log(`[TabClose] travel=${travel.toFixed(1)}px rect=(${rect.left},${rect.top}) size=${W}x${H}`);
-      }
-
-      // DIAGNOSTIC: Use left/top directly (not transform) to rule out transform issues
+      // NOTE: In Firefox chrome context, `transform` is silently ignored on HTML elements.
+      // Only direct `left` property animation produces visible movement.
       mask.style.left = `${(rect.left + tx).toFixed(2)}px`;
       mask.style.opacity = opacity.toFixed(3);
-
-      clone.style.filter = `blur(${blurPx.toFixed(2)}px)`;
 
       shine.style.transform = `translateX(${shineX.toFixed(1)}%) skewX(${TAB_CLOSE.shineSkewDeg}deg)`;
       shine.style.opacity = shineOp.toFixed(3);
@@ -487,7 +466,7 @@
       const rawP = clamp(elapsed / SEARCH_CLOSE.durationMs, 0, 1);
       const opP = clamp((rawP - SEARCH_CLOSE.opacityHoldStart) / SEARCH_CLOSE.opacityFadeSpan, 0, 1);
       // Accelerate into invisibility to keep object visually solid while shrinking
-      const opacity = lerp(1, 0, easeInExpo(opP));
+      const opacity = lerp(1, 0, easeInCubic(opP));
 
       clone.style.transform = formatTranslateScale(ySpring.pos, sxSpring.pos, sySpring.pos);
       clone.style.opacity = opacity.toFixed(3);
