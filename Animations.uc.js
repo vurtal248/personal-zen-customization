@@ -88,7 +88,9 @@
       .og-mask, .og-ghost-mask {
         position:       fixed   !important;
         pointer-events: none    !important;
-        overflow:       hidden  !important;
+        /* overflow must NOT be hidden — it would clip the clone before the eye
+           can track the slide. The clone exits the mask bounds intentionally. */
+        overflow:       visible !important;
         border-radius:  6px     !important;
       }
       .og-mask       { z-index: 9999 !important; }
