@@ -161,10 +161,10 @@
   }
 
   // ── Easings ─────────────────────────────────────────────────────
-  // Replaced harsh Expo curves with luxurious Quintic blends for fluidity
   const easeInExpo = t => t * t * t * t * t;
   const easeOutExpo = t => 1 - Math.pow(1 - t, 5);
   const easeInOutExpo = t => t < 0.5 ? 16 * t * t * t * t * t : 1 - Math.pow(-2 * t + 2, 5) / 2;
+  const easeInOutCubic = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
   const lerp = (a, b, t) => a + (b - a) * t;
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -329,12 +329,16 @@
       const rawP = clamp(elapsed / TAB_CLOSE.durationMs, 0, 1);
       const exitP = rawP;
 
-      const slideP = easeInOutExpo(exitP);
+      // Use a cubic curve instead of quintic. A 5th-order curve squishes all movement 
+      // into a ~50ms window. At 60hz, that's 3 frames, which the eye reads as a blink.
+      // Cubic provides a beautifully pronounced physical slide.
+      const slideP = easeInOutCubic(exitP); 
       const tx = lerp(0, travel, slideP);
 
       const opP = clamp((rawP - TAB_CLOSE.opacityStart) / TAB_CLOSE.opacitySpan, 0, 1);
-      const opacity = lerp(1, 0, easeInExpo(opP));
-      const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeInExpo(opP));
+      // Fade gracefully rather than plummeting
+      const opacity = lerp(1, 0, easeInOutCubic(opP)); 
+      const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeInOutCubic(opP));
 
       const shineP = clamp(elapsed / TAB_CLOSE.shineDurationMs, 0, 1);
       const shineX = lerp(TAB_CLOSE.shineStartX, TAB_CLOSE.shineEndX, easeOutExpo(shineP));
@@ -344,8 +348,8 @@
 
       const gElapsed = Math.max(0, elapsed - TAB_CLOSE.ghostDelayMs);
       const gExitP = clamp(gElapsed / TAB_CLOSE.durationMs, 0, 1);
-      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeInOutExpo(gExitP));
-      const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeInExpo(
+      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeInOutCubic(gExitP));
+      const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeInOutCubic(
         clamp((gElapsed / TAB_CLOSE.durationMs - TAB_CLOSE.ghostFadeOffset) / TAB_CLOSE.ghostFadeSpan, 0, 1)
       ));
 
