@@ -18,10 +18,10 @@
   };
 
   const TAB_CLOSE = {
-    durationMs: 280, // Extend slightly to read the slide motion
+    durationMs: 300, // Maximum snappy limit to allow the slide space to be seen
     safetyMs: 600,
     ghostDelayMs: 20, // Tiny stagger
-    shineDurationMs: 280,
+    shineDurationMs: 300,
     opacityStart: 0.1, // delay the fade starting
     opacitySpan: 0.9,
     ghostTravelFactor: 0.72,
@@ -329,12 +329,11 @@
       const rawP = clamp(elapsed / TAB_CLOSE.durationMs, 0, 1);
       const exitP = rawP;
 
-      const slideP = easeOutExpo(exitP); // Transform starts immediately
+      const slideP = easeInOutExpo(exitP); 
       const tx = lerp(0, travel, slideP);
 
       const opP = clamp((rawP - TAB_CLOSE.opacityStart) / TAB_CLOSE.opacitySpan, 0, 1);
-      // Let it accelerate into invisibility so we actually see it slide!
-      const opacity = lerp(1, 0, easeInExpo(opP));
+      const opacity = lerp(1, 0, easeInExpo(opP)); 
       const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeInExpo(opP));
 
       const shineP = clamp(elapsed / TAB_CLOSE.shineDurationMs, 0, 1);
@@ -345,7 +344,7 @@
 
       const gElapsed = Math.max(0, elapsed - TAB_CLOSE.ghostDelayMs);
       const gExitP = clamp(gElapsed / TAB_CLOSE.durationMs, 0, 1);
-      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeOutExpo(gExitP));
+      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeInOutExpo(gExitP));
       const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeInExpo(
         clamp((gElapsed / TAB_CLOSE.durationMs - TAB_CLOSE.ghostFadeOffset) / TAB_CLOSE.ghostFadeSpan, 0, 1)
       ));
