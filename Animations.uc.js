@@ -18,21 +18,21 @@
   };
 
   const TAB_CLOSE = {
-    durationMs: 300,
-    safetyMs: 700,
-    ghostDelayMs: 20,
-    shineDurationMs: 300,
-    opacityStart: 0.15,
-    opacitySpan: 0.85,
-    ghostTravelFactor: 0.72,
-    travelFactor: 1.25,
-    ghostOpacityStart: 0.45,
-    shinePeakOpacity: 0.4,
+    durationMs: 380,          // Extended: slide must be readable, not a blink
+    safetyMs: 800,
+    ghostDelayMs: 30,         // Ghost trails 30ms behind for depth
+    shineDurationMs: 380,
+    opacityStart: 0.30,       // Fully opaque for first 30% — solid while actively leaving
+    opacitySpan: 0.70,        // Fade over remaining 70%
+    ghostTravelFactor: 0.65,  // Ghost lags at 65% of main travel
+    travelFactor: 1.10,       // 110% of width — clean exit without excess distance
+    ghostOpacityStart: 0.35,
+    shinePeakOpacity: 0.35,
     shineSkewDeg: -28,
     shineStartX: -140,
     shineEndX: 220,
     settledPx: 0.05,
-    spacerSpring: { stiffness: 500, damping: 42 },
+    spacerSpring: { stiffness: 420, damping: 38 },
     ghostFadeOffset: 0.0,
     ghostFadeSpan: 1.0,
     spacerRemoveSafetyMs: 500,
@@ -166,6 +166,8 @@
 
   // ── Easings ─────────────────────────────────────────────────────
   const easeInCubic = t => t * t * t;
+  // easeOutCubic: starts fast, decelerates — correct curve for exit animations per design principles
+  const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
   const easeOutExpo = t => 1 - Math.pow(1 - t, 5);
   const easeInOutCubic = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
@@ -331,8 +333,8 @@
 
       const rawP = clamp(elapsed / TAB_CLOSE.durationMs, 0, 1);
 
-      // Slide: easeInOutCubic — physical feel, gentle start, swift middle
-      const tx = lerp(0, travel, easeInOutCubic(rawP));
+      // Slide: easeOutCubic — exit animations use ease-out (immediate response, smooth deceleration)
+      const tx = lerp(0, travel, easeOutCubic(rawP));
 
       // Opacity: easeInCubic — stays solid while sliding, fades hard at the end
       const opP = clamp((rawP - TAB_CLOSE.opacityStart) / TAB_CLOSE.opacitySpan, 0, 1);
