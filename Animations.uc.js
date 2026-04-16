@@ -18,16 +18,16 @@
   };
 
   const TAB_CLOSE = {
-    durationMs: 380,          // Extended: slide must be readable, not a blink
+    durationMs: 260,          // Shorter but easeOutExpo makes it feel punchy, not rushed
     safetyMs: 800,
-    ghostDelayMs: 30,         // Ghost trails 30ms behind for depth
-    shineDurationMs: 380,
-    opacityStart: 0.30,       // Fully opaque for first 30% — solid while actively leaving
-    opacitySpan: 0.70,        // Fade over remaining 70%
-    ghostTravelFactor: 0.65,  // Ghost lags at 65% of main travel
+    ghostDelayMs: 50,         // Ghost trails 50ms behind — wider gap improves depth separation
+    shineDurationMs: 260,
+    opacityStart: 0.50,       // Stay fully opaque for first 50% — reads as a solid object exiting
+    opacitySpan: 0.50,        // Fade over the remaining 50%
+    ghostTravelFactor: 0.50,  // Ghost lags more — clearer depth layering from main clone
     travelFactor: 1.10,       // 110% of width — clean exit without excess distance
-    ghostOpacityStart: 0.35,
-    shinePeakOpacity: 0.35,
+    ghostOpacityStart: 0.30,
+    shinePeakOpacity: 0.30,
     shineSkewDeg: -28,
     shineStartX: -140,
     shineEndX: 220,
@@ -36,6 +36,9 @@
     ghostFadeOffset: 0.0,
     ghostFadeSpan: 1.0,
     spacerRemoveSafetyMs: 500,
+    // Delay before collapsing the spacer — prevents concurrent layout reflow
+    // from shifting surrounding tabs mid-slide (the upward "bounce" bug).
+    spacerCollapseDelayMs: 80,
   };
 
   const SEARCH_OPEN = {
@@ -333,12 +336,14 @@
 
       const rawP = clamp(elapsed / TAB_CLOSE.durationMs, 0, 1);
 
-      // Slide: easeOutCubic — exit animations use ease-out (immediate response, smooth deceleration)
-      const tx = lerp(0, travel, easeOutCubic(rawP));
+      // Slide: easeOutExpo — punchier initial kick makes the departure readable;
+      // the long tail decelerates gracefully without the snap of easeOutCubic.
+      const tx = lerp(0, travel, easeOutExpo(rawP));
 
-      // Opacity: easeInCubic — stays solid while sliding, fades hard at the end
+      // Opacity: easeInOutCubic — rounder curve avoids the hard pop of easeInCubic;
+      // cohesive with the easeOutExpo slide so both properties feel unified.
       const opP = clamp((rawP - TAB_CLOSE.opacityStart) / TAB_CLOSE.opacitySpan, 0, 1);
-      const opacity = lerp(1, 0, easeInCubic(opP));
+      const opacity = lerp(1, 0, easeInOutCubic(opP));
 
       // Shine sweeps across during exit (plain div — transform works fine here)
       const shineP = clamp(elapsed / TAB_CLOSE.shineDurationMs, 0, 1);
@@ -369,8 +374,13 @@
     mask.remove();
     ghostMask.remove();
     if (spacer.isConnected) {
-      // Execute unawaited spacer collapse for staggered overlap
-      collapseSpacer(spacer, H);
+      // Delay spacer collapse so the clone has already exited before the gap closes.
+      // Without this delay, the concurrent layout reflow shifts surrounding tabs
+      // mid-slide, which moves the stale rect.left reference and causes the
+      // visible upward "bounce" on the departing clone.
+      setTimeout(() => {
+        if (spacer.isConnected) collapseSpacer(spacer, H);
+      }, TAB_CLOSE.spacerCollapseDelayMs);
     }
   }
 
