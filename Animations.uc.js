@@ -18,10 +18,10 @@
   };
 
   const TAB_CLOSE = {
-    durationMs: 260,          // Shorter but easeOutExpo makes it feel punchy, not rushed
+    durationMs: 360,          // easeOutCubic distributes motion evenly — reads as deliberate, not a blink
     safetyMs: 800,
     ghostDelayMs: 50,         // Ghost trails 50ms behind — wider gap improves depth separation
-    shineDurationMs: 260,
+    shineDurationMs: 360,
     opacityStart: 0.50,       // Stay fully opaque for first 50% — reads as a solid object exiting
     opacitySpan: 0.50,        // Fade over the remaining 50%
     ghostTravelFactor: 0.50,  // Ghost lags more — clearer depth layering from main clone
@@ -112,8 +112,11 @@
       }
       .og-clone { will-change: opacity !important; }
       .og-ghost {
-        filter:      blur(4px) !important;
-        will-change: opacity !important;
+        /* filter is intentionally absent here — the RAF loop animates blur from
+           0 to 2px via ghostClone.style.filter so it builds progressively.
+           A static !important rule would override inline style assignments
+           and apply full blur at frame 0, creating the instant white-glob artifact. */
+        will-change: opacity, filter !important;
       }
       .og-shine {
         position:       absolute !important;
@@ -336,9 +339,10 @@
 
       const rawP = clamp(elapsed / TAB_CLOSE.durationMs, 0, 1);
 
-      // Slide: easeOutExpo — punchier initial kick makes the departure readable;
-      // the long tail decelerates gracefully without the snap of easeOutCubic.
-      const tx = lerp(0, travel, easeOutExpo(rawP));
+      // Slide: easeOutCubic — even distribution of motion across the full duration;
+      // easeOutExpo front-loads ~63% of travel into the first 20% of time,
+      // making the departure imperceptibly fast at any reasonable duration.
+      const tx = lerp(0, travel, easeOutCubic(rawP));
 
       // Opacity: easeInOutCubic — rounder curve avoids the hard pop of easeInCubic;
       // cohesive with the easeOutExpo slide so both properties feel unified.
@@ -356,6 +360,10 @@
       const gRawP = clamp(gElapsed / TAB_CLOSE.durationMs, 0, 1);
       const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeInOutCubic(gRawP));
       const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeInCubic(gRawP));
+      // Blur builds from 0 → 2px as the ghost trails away.
+      // Starting at 0 means the ghost is a legible tab copy on frame 1;
+      // it progressively smears into a motion cue rather than opening as a glob.
+      const gBlur = lerp(0, 2, easeInCubic(gRawP));
 
       // NOTE: In Firefox chrome context, `transform` is silently ignored on HTML elements.
       // Only direct `left` property animation produces visible movement.
@@ -367,6 +375,7 @@
 
       ghostMask.style.left = `${(rect.left + gTx).toFixed(2)}px`;
       ghostMask.style.opacity = gOp.toFixed(3);
+      ghostClone.style.filter = `blur(${gBlur.toFixed(2)}px)`;
 
       return rawP < 1;
     }).promise;
