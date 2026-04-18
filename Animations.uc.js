@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name           Animations
-// @version        1.6.0
+// @version        1.6.1
 // @author         vur
 // @description    JS
 // @compatibility  Firefox 100+
@@ -334,6 +334,18 @@
     const mount = document.body ?? document.documentElement;
     mount.appendChild(ghostMask);
     mount.appendChild(mask);
+
+    // Suppress the live tab's own CSS transitions and hide it immediately.
+    // Root cause of the upward bounce: Firefox/Zen applies its own internal
+    // tab-removal animation (height collapse, opacity fade, etc.) to the actual
+    // tab element while our clone is sliding. That animation triggers a layout
+    // reflow — adjacent tabs shift upward to fill the collapsing space — which
+    // appears as a vertical "bounce" on the departing clone.
+    // Setting visibility:hidden + transition:none freezes the live tab in place
+    // (no layout changes, no paint) so only our clone is visually active.
+    // We don't need to restore these styles — Firefox removes the element anyway.
+    tab.style.transition = "none";
+    tab.style.visibility = "hidden";
 
     const travel = -(W * TAB_CLOSE.travelFactor);
 
