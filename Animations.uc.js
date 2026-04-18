@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name           Animations
-// @version        1.6.2
+// @version        1.6.3
 // @author         vur
 // @description    JS
 // @compatibility  Firefox 100+
@@ -103,8 +103,8 @@
         overflow:       visible !important;
         border-radius:  6px     !important;
       }
-      .og-mask       { z-index: 9999 !important; will-change: left, opacity !important; }
-      .og-ghost-mask { z-index: 9998 !important; will-change: left, opacity !important; }
+      .og-mask       { z-index: 9999 !important; will-change: transform, opacity !important; }
+      .og-ghost-mask { z-index: 9998 !important; will-change: transform, opacity !important; overflow: hidden !important; }
  
       .og-clone, .og-ghost {
         position: absolute  !important;
@@ -311,8 +311,8 @@
     // No min-height — animating both height and min-height causes a double reflow
     // per frame: min-height resists the collapsing height until height wins, producing
     // a visible step-bounce. height alone is sufficient.
+    // The spacer is inserted in the atomic swap below — NOT here.
     spacer.style.cssText = `width: ${W}px; height: ${H}px; box-sizing: content-box; flex-shrink: 0; pointer-events: none; visibility: hidden;`;
-    tab.parentNode.insertBefore(spacer, tab.nextSibling);
 
     const ghostMask = document.createElement("div");
     ghostMask.classList.add("og-ghost-mask");
@@ -337,17 +337,20 @@
     mount.appendChild(ghostMask);
     mount.appendChild(mask);
 
-    // Suppress the live tab's own CSS transitions and hide it immediately.
-    // Root cause of the upward bounce: Firefox/Zen applies its own internal
-    // tab-removal animation (height collapse, opacity fade, etc.) to the actual
-    // tab element while our clone is sliding. That animation triggers a layout
-    // reflow — adjacent tabs shift upward to fill the collapsing space — which
-    // appears as a vertical "bounce" on the departing clone.
-    // Setting visibility:hidden + transition:none freezes the live tab in place
-    // (no layout changes, no paint) so only our clone is visually active.
-    // We don't need to restore these styles — Firefox removes the element anyway.
+    // ── Atomic tab→spacer swap ────────────────────────────────────
+    // visibility:hidden (prior fix) kept the tab contributing H px of layout
+    // space. Inserting the spacer (also H px) meant the layout briefly had 2H.
+    // Firefox removes the actual tab element asynchronously — commonly one full
+    // frame later. At that paint, surrounding tabs snapped up by H: the bounce.
+    //
+    // display:none removes the tab from layout entirely (0 px contribution).
+    // Both mutations happen in the same synchronous block → the browser batches
+    // them into ONE reflow at the next paint: spacer (H) replaces tab (0) →
+    // net H. When Firefox later removes the display:none element it has no
+    // layout effect (it was already 0 px). Surrounding tabs never shift.
     tab.style.transition = "none";
-    tab.style.visibility = "hidden";
+    tab.style.setProperty("display", "none", "important");
+    tab.parentNode.insertBefore(spacer, tab);  // spacer occupies tab’s vacated slot
 
     const travel = -(W * TAB_CLOSE.travelFactor);
 
@@ -383,15 +386,19 @@
       // it progressively smears into a motion cue rather than opening as a glob.
       const gBlur = lerp(0, 2, easeInCubic(gRawP));
 
-      // NOTE: In Firefox chrome context, `transform` is silently ignored on HTML elements.
-      // Only direct `left` property animation produces visible movement.
-      mask.style.left = `${(rect.left + tx).toFixed(2)}px`;
+      // GPU-composited slide via transform — does not trigger layout recalculation.
+      // `left` recalculated layout on every frame (main-thread bound, not composited).
+      // `will-change: transform` (set in CSS) correctly promotes these elements to
+      // compositor layers. The prior comment claiming transform is "silently ignored"
+      // applied only to XUL tab elements — our plain HTML og-mask divs support
+      // transform correctly (same pattern as the search-close clone animation).
+      mask.style.transform = `translateX(${tx.toFixed(2)}px)`;
       mask.style.opacity = opacity.toFixed(3);
 
       shine.style.transform = `translateX(${shineX.toFixed(1)}%) skewX(${TAB_CLOSE.shineSkewDeg}deg)`;
       shine.style.opacity = shineOp.toFixed(3);
 
-      ghostMask.style.left = `${(rect.left + gTx).toFixed(2)}px`;
+      ghostMask.style.transform = `translateX(${gTx.toFixed(2)}px)`;
       ghostMask.style.opacity = gOp.toFixed(3);
       ghostClone.style.filter = `blur(${gBlur.toFixed(2)}px)`;
 
