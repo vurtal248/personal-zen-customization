@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name           Animations
-// @version        1.5.1
+// @version        1.6.0
 // @author         vur
 // @description    JS
 // @compatibility  Firefox 100+
@@ -18,51 +18,53 @@
   };
 
   const TAB_CLOSE = {
-    durationMs: 360,          // easeOutCubic distributes motion evenly — reads as deliberate, not a blink
+    durationMs: 280,          // Snappier exit — 360ms read as deliberate; 280ms is crisp without feeling rushed
     safetyMs: 800,
-    ghostDelayMs: 50,         // Ghost trails 50ms behind — wider gap improves depth separation
-    shineDurationMs: 360,
+    ghostDelayMs: 35,         // Tighter delay — ghost starts sooner, parallax is still readable as a distinct z-layer
+    shineDurationMs: 280,
     opacityStart: 0.50,       // Stay fully opaque for first 50% — reads as a solid object exiting
-    opacitySpan: 0.50,        // Fade over the remaining 50%
-    ghostTravelFactor: 0.50,  // Ghost lags more — clearer depth layering from main clone
-    travelFactor: 1.10,       // 110% of width — clean exit without excess distance
-    ghostOpacityStart: 0.30,
-    shinePeakOpacity: 0.30,
+    opacitySpan: 0.50,        // Fade over the remaining 50% with easeOutCubic (immediate onset)
+    ghostTravelFactor: 0.40,  // Ghost lags further behind — deeper parallax separation from main clone
+    travelFactor: 0.85,       // 85% of width — tab exits cleanly without wasted overshoot distance
+    ghostOpacityStart: 0.28,
+    shinePeakOpacity: 0.22,   // Subtler glint — reads as glass reflection, not a flashlight
     shineSkewDeg: -28,
-    shineStartX: -140,
-    shineEndX: 220,
+    shineStartX: -120,        // Shorter sweep path relative to tab width
+    shineEndX: 180,
     settledPx: 0.05,
-    spacerSpring: { stiffness: 420, damping: 38 },
+    spacerSpring: { stiffness: 460, damping: 40 }, // Snappier spacer collapse, slight extra damping prevents overshoot
     ghostFadeOffset: 0.0,
     ghostFadeSpan: 1.0,
     spacerRemoveSafetyMs: 500,
     // Delay before collapsing the spacer — prevents concurrent layout reflow
     // from shifting surrounding tabs mid-slide (the upward "bounce" bug).
-    spacerCollapseDelayMs: 80,
+    spacerCollapseDelayMs: 50, // Tighter gap: clone is exiting faster so spacer can close sooner
   };
 
   const SEARCH_OPEN = {
-    fadeMs: 120, // Faster entrance transition
+    fadeMs: 90,   // Opacity reaches 1 early in the spring arc — bar feels solid before scale settles
     safetyMs: 600,
-    startY: 8, // Do not animate from too far away
-    startScaleX: 0.97, // Start closer to scale(1) per component building principles
-    startScaleY: 0.95,
+    startY: 6,    // Smaller initial drop — feels grounded, not falling in from above
+    startScaleX: 0.97, // Start close to scale(1) per Emil: nothing appears from nothing
+    startScaleY: 0.97, // 0.95 looked compressed; 0.97 is the Emil-recommended perceptual floor
     settleY: 0.01,
     settleScale: 0.0001,
   };
 
   const SEARCH_OPEN_SPRINGS = {
-    y: { stiffness: 520, damping: 40 }, // Stronger springs for snappier feeling
-    sx: { stiffness: 500, damping: 38 },
-    sy: { stiffness: 500, damping: 38 },
+    // 480/36 vs 520/40: slightly looser stiffness with less damping → micro-overshoot on settle
+    // that reads as alive/organic vs the rigid snap of 520 stiffness
+    y: { stiffness: 480, damping: 36 },
+    sx: { stiffness: 460, damping: 34 },
+    sy: { stiffness: 460, damping: 34 },
   };
 
   const SEARCH_CLOSE = {
-    durationMs: 140, // Needs immediate acknowledgment of close action
+    durationMs: 120, // Exits are faster than entrances (asymmetric timing principle)
     safetyMs: 400,
-    targetY: 6,
+    targetY: 5,    // Slightly less travel — close reads as a crisp dismiss, not a dropdown
     targetScaleX: 0.98,
-    targetScaleY: 0.96,
+    targetScaleY: 0.97,
     opacityHoldStart: 0.0,
     opacityFadeSpan: 1.0,
     settleY: 0.02,
@@ -70,9 +72,10 @@
   };
 
   const SEARCH_CLOSE_SPRINGS = {
-    y: { stiffness: 600, damping: 42 },
-    sy: { stiffness: 600, damping: 42 },
-    sx: { stiffness: 600, damping: 42 },
+    // 600 felt rigid/mechanical; 560/38 settles organically with less ringing
+    y: { stiffness: 560, damping: 38 },
+    sy: { stiffness: 580, damping: 40 },
+    sx: { stiffness: 580, damping: 40 },
   };
 
   const searchAnimationState = new WeakMap();
@@ -344,10 +347,11 @@
       // making the departure imperceptibly fast at any reasonable duration.
       const tx = lerp(0, travel, easeOutCubic(rawP));
 
-      // Opacity: easeInOutCubic — rounder curve avoids the hard pop of easeInCubic;
-      // cohesive with the easeOutExpo slide so both properties feel unified.
+      // Opacity: easeOutCubic — begins fading immediately once opacityStart is passed.
+      // easeInOutCubic had a slow-start that caused the tab to "hang" visibly
+      // opaque mid-slide before fading, breaking the sense of a unified exit.
       const opP = clamp((rawP - TAB_CLOSE.opacityStart) / TAB_CLOSE.opacitySpan, 0, 1);
-      const opacity = lerp(1, 0, easeInOutCubic(opP));
+      const opacity = lerp(1, 0, easeOutCubic(opP));
 
       // Shine sweeps across during exit (plain div — transform works fine here)
       const shineP = clamp(elapsed / TAB_CLOSE.shineDurationMs, 0, 1);
@@ -486,8 +490,10 @@
 
       const rawP = clamp(elapsed / SEARCH_CLOSE.durationMs, 0, 1);
       const opP = clamp((rawP - SEARCH_CLOSE.opacityHoldStart) / SEARCH_CLOSE.opacityFadeSpan, 0, 1);
-      // Accelerate into invisibility to keep object visually solid while shrinking
-      const opacity = lerp(1, 0, easeInCubic(opP));
+      // easeOutCubic (was easeInCubic): begins fading immediately on frame 1 — close
+      // feels instant and responsive. easeInCubic delayed the fade onset, making the
+      // bar 'hang' at full opacity for the first third of the animation.
+      const opacity = lerp(1, 0, easeOutCubic(opP));
 
       clone.style.transform = formatTranslateScale(ySpring.pos, sxSpring.pos, sySpring.pos);
       clone.style.opacity = opacity.toFixed(3);
