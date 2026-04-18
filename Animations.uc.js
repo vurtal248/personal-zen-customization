@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name           Animations
-// @version        1.6.1
+// @version        1.6.2
 // @author         vur
 // @description    JS
 // @compatibility  Firefox 100+
@@ -32,7 +32,7 @@
     shineStartX: -120,        // Shorter sweep path relative to tab width
     shineEndX: 180,
     settledPx: 0.05,
-    spacerSpring: { stiffness: 460, damping: 40 }, // Snappier spacer collapse, slight extra damping prevents overshoot
+    spacerSpring: { stiffness: 460, damping: 60 }, // Critically overdamped — damping ratio ~1.4 eliminates all overshoot/ringing
     ghostFadeOffset: 0.0,
     ghostFadeSpan: 1.0,
     spacerRemoveSafetyMs: 500,
@@ -273,9 +273,9 @@
       if (!spacer.isConnected) return false;
       spring.step(dt);
       const h = Math.max(0, spring.pos);
-      // REVIEWED: explicit height animation, not left/top/margin
+      // Only animate height — min-height is absent from the spacer so there's
+      // no competing property fighting the collapse on each frame.
       spacer.style.height = `${h.toFixed(2)}px`;
-      spacer.style.minHeight = `${h.toFixed(2)}px`;
       return !spring.settled(TAB_CLOSE.settledPx);
     }).promise;
 
@@ -308,8 +308,10 @@
     const H = rect.height;
 
     const spacer = document.createElement("div");
-    // REFACTOR: Use cssText for multiple sequential style assignments
-    spacer.style.cssText = `width: ${W}px; height: ${H}px; min-height: ${H}px; flex-shrink: 0; pointer-events: none; visibility: hidden;`;
+    // No min-height — animating both height and min-height causes a double reflow
+    // per frame: min-height resists the collapsing height until height wins, producing
+    // a visible step-bounce. height alone is sufficient.
+    spacer.style.cssText = `width: ${W}px; height: ${H}px; box-sizing: content-box; flex-shrink: 0; pointer-events: none; visibility: hidden;`;
     tab.parentNode.insertBefore(spacer, tab.nextSibling);
 
     const ghostMask = document.createElement("div");
