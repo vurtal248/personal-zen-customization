@@ -32,17 +32,12 @@
     shineStartX: -120,        // Shorter sweep path relative to tab width
     shineEndX: 180,
     settledPx: 0.05,
-    // spacerSpring removed — spring integrators (Euler) can overshoot on coarse
-    // 16ms dt steps even when the damping ratio is >1, causing the spacer height
-    // to briefly go negative → clamp to 0 → snap back → visible upward bounce.
-    // A deterministic easeOutCubic tween is strictly monotone-decreasing: it
-    // can never bounce.
-    spacerCollapseDurationMs: 200, // Collapse faster than the slide so the gap closes cleanly
+    spacerCollapseDurationMs: 220, // Slightly longer than the slide so the gap never rushes ahead of the eye
     ghostFadeOffset: 0.0,
     ghostFadeSpan: 1.0,
     spacerRemoveSafetyMs: 500,
-    // Delay before collapsing the spacer — prevents concurrent layout reflow
-    // from shifting surrounding tabs mid-slide.
+    // Delay before collapsing the spacer — clone must be fully off-screen
+    // before the gap starts closing so the two motions never visually overlap.
     spacerCollapseDelayMs: 50,
   };
 
@@ -269,22 +264,59 @@
   }
 
   // ── Spacer collapse ─────────────────────────────────────────────
-  // Uses a plain easeOutCubic tween instead of a spring so the height is
-  // strictly monotone-decreasing. Spring integrators (Euler) can overshoot
-  // on coarse dt steps even when critically overdamped, causing a momentary
-  // negative height → clamp → snap that reads as an upward bounce.
+  // Two-part fix for the upward bounce:
+  //
+  // 1. easeInOutCubic instead of easeOutCubic.
+  //    easeOutCubic(0.08) ≈ 0.22 — on the very first 16ms frame the height
+  //    drops by ~22%, which is a large sudden layout shift. Zen's tab strip
+  //    has CSS transitions on .tabbrowser-tab; they react to that delta and
+  //    animate the sibling tabs' positions with whatever easing they carry,
+  //    producing the visible bounce.
+  //    easeInOutCubic(0.08) ≈ 0.002 — only 0.2% on frame 1. The collapse
+  //    accelerates through the midpoint and decelerates to land cleanly at 0.
+  //
+  // 2. Suppress sibling tab transitions for the collapse window.
+  //    Even with a gentle start, Zen's own transition on .tabbrowser-tab could
+  //    still add unwanted secondary motion. We inject a scoped <style> that
+  //    forces transition:none on tab elements, then remove it once the spacer
+  //    is gone. The suppression window is ~220ms — imperceptibly short.
   async function collapseSpacer(spacer, fromH) {
+    // Inject transition suppressor.
+    const SUPPRESS_ID = "og-spacer-suppress";
+    let suppressStyle = document.getElementById(SUPPRESS_ID);
+    if (!suppressStyle) {
+      suppressStyle = document.createElement("style");
+      suppressStyle.id = SUPPRESS_ID;
+      document.head?.appendChild(suppressStyle);
+    }
+    // Target the standard Firefox/Zen tab element and any Zen-specific
+    // wrappers that might also carry position transitions.
+    suppressStyle.textContent = `
+      .tabbrowser-tab,
+      .tabbrowser-tab *,
+      .zen-tab,
+      .zen-tab * {
+        transition: none !important;
+        animation-duration: 0s !important;
+      }
+    `;
+
     await runAnimationLoop(TAB_CLOSE.spacerRemoveSafetyMs, ({ elapsed }) => {
       if (!spacer.isConnected) return false;
       const rawP = clamp(elapsed / TAB_CLOSE.spacerCollapseDurationMs, 0, 1);
-      // easeOutCubic starts fast then decelerates — the gap snaps shut quickly
-      // so surrounding tabs settle into place before the user can track the seam.
-      const h = fromH * (1 - easeOutCubic(rawP));
+      // easeInOutCubic: near-zero velocity at both ends, peak at midpoint.
+      // The collapse feels organic rather than snapping or dragging.
+      const h = fromH * (1 - easeInOutCubic(rawP));
       spacer.style.height = `${h.toFixed(2)}px`;
       return rawP < 1;
     }).promise;
 
+    // Tear down suppressor before removing the spacer so that any
+    // transition Zen re-applies after this point is unaffected.
+    suppressStyle.remove();
+
     if (spacer.isConnected) {
+      // Height is already 0 here so removal causes no layout shift.
       spacer.remove();
     }
   }
