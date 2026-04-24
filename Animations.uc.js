@@ -32,13 +32,18 @@
     shineStartX: -120,        // Shorter sweep path relative to tab width
     shineEndX: 180,
     settledPx: 0.05,
-    spacerSpring: { stiffness: 460, damping: 60 }, // Critically overdamped — damping ratio ~1.4 eliminates all overshoot/ringing
+    // spacerSpring removed — spring integrators (Euler) can overshoot on coarse
+    // 16ms dt steps even when the damping ratio is >1, causing the spacer height
+    // to briefly go negative → clamp to 0 → snap back → visible upward bounce.
+    // A deterministic easeOutCubic tween is strictly monotone-decreasing: it
+    // can never bounce.
+    spacerCollapseDurationMs: 200, // Collapse faster than the slide so the gap closes cleanly
     ghostFadeOffset: 0.0,
     ghostFadeSpan: 1.0,
     spacerRemoveSafetyMs: 500,
     // Delay before collapsing the spacer — prevents concurrent layout reflow
-    // from shifting surrounding tabs mid-slide (the upward "bounce" bug).
-    spacerCollapseDelayMs: 50, // Tighter gap: clone is exiting faster so spacer can close sooner
+    // from shifting surrounding tabs mid-slide.
+    spacerCollapseDelayMs: 50,
   };
 
   const SEARCH_OPEN = {
@@ -264,19 +269,19 @@
   }
 
   // ── Spacer collapse ─────────────────────────────────────────────
+  // Uses a plain easeOutCubic tween instead of a spring so the height is
+  // strictly monotone-decreasing. Spring integrators (Euler) can overshoot
+  // on coarse dt steps even when critically overdamped, causing a momentary
+  // negative height → clamp → snap that reads as an upward bounce.
   async function collapseSpacer(spacer, fromH) {
-    const spring = createSpring(TAB_CLOSE.spacerSpring);
-    spring.pos = fromH;
-    spring.target = 0;
-
-    await runAnimationLoop(TAB_CLOSE.spacerRemoveSafetyMs, ({ dt }) => {
+    await runAnimationLoop(TAB_CLOSE.spacerRemoveSafetyMs, ({ elapsed }) => {
       if (!spacer.isConnected) return false;
-      spring.step(dt);
-      const h = Math.max(0, spring.pos);
-      // Only animate height — min-height is absent from the spacer so there's
-      // no competing property fighting the collapse on each frame.
+      const rawP = clamp(elapsed / TAB_CLOSE.spacerCollapseDurationMs, 0, 1);
+      // easeOutCubic starts fast then decelerates — the gap snaps shut quickly
+      // so surrounding tabs settle into place before the user can track the seam.
+      const h = fromH * (1 - easeOutCubic(rawP));
       spacer.style.height = `${h.toFixed(2)}px`;
-      return !spring.settled(TAB_CLOSE.settledPx);
+      return rawP < 1;
     }).promise;
 
     if (spacer.isConnected) {
