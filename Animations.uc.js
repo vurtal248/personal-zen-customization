@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name           Animations
-// @version        1.6.5
+// @version        1.6.6
 // @author         vur
 // @description    JS
 // @compatibility  Firefox 100+
@@ -18,53 +18,51 @@
   };
 
   const TAB_CLOSE = {
-    durationMs: 280,          // Snappier exit — 360ms read as deliberate; 280ms is crisp without feeling rushed
-    safetyMs: 800,
-    ghostDelayMs: 35,         // Tighter delay — ghost starts sooner, parallax is still readable as a distinct z-layer
-    shineDurationMs: 280,
-    opacityStart: 0.50,       // Stay fully opaque for first 50% — reads as a solid object exiting
-    opacitySpan: 0.50,        // Fade over the remaining 50% with easeOutCubic (immediate onset)
-    ghostTravelFactor: 0.40,  // Ghost lags further behind — deeper parallax separation from main clone
-    travelFactor: 0.85,       // 85% of width — tab exits cleanly without wasted overshoot distance
-    ghostOpacityStart: 0.28,
-    shinePeakOpacity: 0.22,   // Subtler glint — reads as glass reflection, not a flashlight
+    durationMs: 800,
+    safetyMs: 1800,
+    antiMs: 180,
+    antiPx: 12.0,
+    ghostDelayMs: 90,
+    shineDurationMs: 650,
+    opacityStart: 0.25,
+    opacitySpan: 0.75,
+    ghostTravelFactor: 0.85,
+    blurMaxPx: 32.0,
+    travelFactor: 1.35,
+    ghostOpacityStart: 0.6,
+    shinePeakOpacity: 0.85,
     shineSkewDeg: -28,
-    shineStartX: -120,        // Shorter sweep path relative to tab width
-    shineEndX: 180,
+    shineStartX: -120,
+    shineEndX: 220,
     settledPx: 0.05,
-    spacerCollapseDurationMs: 220, // Slightly longer than the slide so the gap never rushes ahead of the eye
-    ghostFadeOffset: 0.0,
-    ghostFadeSpan: 1.0,
-    spacerRemoveSafetyMs: 500,
-    // Delay before collapsing the spacer — clone must be fully off-screen
-    // before the gap starts closing so the two motions never visually overlap.
-    spacerCollapseDelayMs: 50,
+    spacerSpring: { stiffness: 280, damping: 32 },
+    ghostFadeOffset: 0.1,
+    ghostFadeSpan: 0.9,
+    spacerRemoveSafetyMs: 800,
   };
 
   const SEARCH_OPEN = {
-    fadeMs: 90,   // Opacity reaches 1 early in the spring arc — bar feels solid before scale settles
-    safetyMs: 600,
-    startY: 6,    // Smaller initial drop — feels grounded, not falling in from above
-    startScaleX: 0.97, // Start close to scale(1) per Emil: nothing appears from nothing
-    startScaleY: 0.97, // 0.95 looked compressed; 0.97 is the Emil-recommended perceptual floor
+    fadeMs: 350,
+    safetyMs: 1200,
+    startY: 32,
+    startScaleX: 0.94,
+    startScaleY: 0.88,
     settleY: 0.01,
     settleScale: 0.0001,
   };
 
   const SEARCH_OPEN_SPRINGS = {
-    // 480/36 vs 520/40: slightly looser stiffness with less damping → micro-overshoot on settle
-    // that reads as alive/organic vs the rigid snap of 520 stiffness
-    y: { stiffness: 480, damping: 36 },
-    sx: { stiffness: 460, damping: 34 },
-    sy: { stiffness: 460, damping: 34 },
+    y: { stiffness: 420, damping: 34 },
+    sx: { stiffness: 380, damping: 30 },
+    sy: { stiffness: 380, damping: 30 },
   };
 
   const SEARCH_CLOSE = {
-    durationMs: 120, // Exits are faster than entrances (asymmetric timing principle)
-    safetyMs: 400,
-    targetY: 5,    // Slightly less travel — close reads as a crisp dismiss, not a dropdown
-    targetScaleX: 0.98,
-    targetScaleY: 0.97,
+    durationMs: 450,
+    safetyMs: 800,
+    targetY: 36,
+    targetScaleX: 0.94,
+    targetScaleY: 0.88,
     opacityHoldStart: 0.0,
     opacityFadeSpan: 1.0,
     settleY: 0.02,
@@ -72,39 +70,32 @@
   };
 
   const SEARCH_CLOSE_SPRINGS = {
-    // 600 felt rigid/mechanical; 560/38 settles organically with less ringing
-    y: { stiffness: 560, damping: 38 },
-    sy: { stiffness: 580, damping: 40 },
-    sx: { stiffness: 580, damping: 40 },
+    y: { stiffness: 340, damping: 32 },
+    sy: { stiffness: 280, damping: 28 },
+    sx: { stiffness: 280, damping: 28 },
   };
 
   const searchAnimationState = new WeakMap();
+  // REVIEWED: no stagger sequences present in this file or needed for current interactions
   let searchObserver = null;
   let startupObserver = null;
   let tabCloseHandler = null;
   let unloadHandler = null;
 
   // ── Styles ──────────────────────────────────────────────────────
-  // Always overwrite — guards prevent CSS updates within the same session.
-  {
-    let style = document.getElementById(STYLE_ID);
-    if (!style) {
-      style = document.createElement("style");
-      style.id = STYLE_ID;
-      document.head?.appendChild(style);
-    }
+  if (!document.getElementById(STYLE_ID)) {
+    const style = document.createElement("style");
+    style.id = STYLE_ID;
     style.textContent = `
       /* ── Tab deletion masks ─────────────────────── */
       .og-mask, .og-ghost-mask {
         position:       fixed   !important;
         pointer-events: none    !important;
-        /* overflow must NOT be hidden — it would clip the clone before the eye
-           can track the slide. The clone exits the mask bounds intentionally. */
-        overflow:       visible !important;
+        overflow:       hidden  !important;
         border-radius:  6px     !important;
       }
-      .og-mask       { z-index: 9999 !important; will-change: transform, opacity !important; }
-      .og-ghost-mask { z-index: 9998 !important; will-change: transform, opacity !important; overflow: hidden !important; }
+      .og-mask       { z-index: 9999 !important; }
+      .og-ghost-mask { z-index: 9998 !important; }
  
       .og-clone, .og-ghost {
         position: absolute  !important;
@@ -113,13 +104,10 @@
         height:   100%      !important;
         pointer-events: none !important;
       }
-      .og-clone { will-change: opacity !important; }
+      .og-clone { will-change: transform, opacity, filter !important; }
       .og-ghost {
-        /* filter is intentionally absent here — the RAF loop animates blur from
-           0 to 2px via ghostClone.style.filter so it builds progressively.
-           A static !important rule would override inline style assignments
-           and apply full blur at frame 0, creating the instant white-glob artifact. */
-        will-change: opacity, filter !important;
+        filter:      blur(5px) !important;
+        will-change: transform, opacity, filter !important;
       }
       .og-shine {
         position:       absolute !important;
@@ -149,6 +137,7 @@
         overflow: visible !important;
       }
     `;
+    document.head.appendChild(style);
   }
 
   // ── Spring integrator ───────────────────────────────────────────
@@ -165,8 +154,7 @@
         this.pos += this.vel * dt;
         return this.pos;
       },
-      // Slightly looser epsilon — ends springs earlier, fewer unnecessary RAF frames
-      settled(eps = 0.003) {
+      settled(eps = 0.002) {
         return Math.abs(this.pos - this.target) < eps
           && Math.abs(this.vel) < eps;
       },
@@ -174,11 +162,10 @@
   }
 
   // ── Easings ─────────────────────────────────────────────────────
-  const easeInCubic = t => t * t * t;
-  // easeOutCubic: starts fast, decelerates — correct curve for exit animations per design principles
-  const easeOutCubic = t => 1 - Math.pow(1 - t, 3);
+  // Replaced harsh Expo curves with luxurious Quintic blends for fluidity
+  const easeInExpo = t => t * t * t * t * t;
   const easeOutExpo = t => 1 - Math.pow(1 - t, 5);
-  const easeInOutCubic = t => t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  const easeInOutExpo = t => t < 0.5 ? 16 * t * t * t * t * t : 1 - Math.pow(-2 * t + 2, 5) / 2;
 
   const lerp = (a, b, t) => a + (b - a) * t;
   const clamp = (v, lo, hi) => Math.max(lo, Math.min(hi, v));
@@ -264,59 +251,22 @@
   }
 
   // ── Spacer collapse ─────────────────────────────────────────────
-  // Two-part fix for the upward bounce:
-  //
-  // 1. easeInOutCubic instead of easeOutCubic.
-  //    easeOutCubic(0.08) ≈ 0.22 — on the very first 16ms frame the height
-  //    drops by ~22%, which is a large sudden layout shift. Zen's tab strip
-  //    has CSS transitions on .tabbrowser-tab; they react to that delta and
-  //    animate the sibling tabs' positions with whatever easing they carry,
-  //    producing the visible bounce.
-  //    easeInOutCubic(0.08) ≈ 0.002 — only 0.2% on frame 1. The collapse
-  //    accelerates through the midpoint and decelerates to land cleanly at 0.
-  //
-  // 2. Suppress sibling tab transitions for the collapse window.
-  //    Even with a gentle start, Zen's own transition on .tabbrowser-tab could
-  //    still add unwanted secondary motion. We inject a scoped <style> that
-  //    forces transition:none on tab elements, then remove it once the spacer
-  //    is gone. The suppression window is ~220ms — imperceptibly short.
   async function collapseSpacer(spacer, fromH) {
-    // Inject transition suppressor.
-    const SUPPRESS_ID = "og-spacer-suppress";
-    let suppressStyle = document.getElementById(SUPPRESS_ID);
-    if (!suppressStyle) {
-      suppressStyle = document.createElement("style");
-      suppressStyle.id = SUPPRESS_ID;
-      document.head?.appendChild(suppressStyle);
-    }
-    // Target the standard Firefox/Zen tab element and any Zen-specific
-    // wrappers that might also carry position transitions.
-    suppressStyle.textContent = `
-      .tabbrowser-tab,
-      .tabbrowser-tab *,
-      .zen-tab,
-      .zen-tab * {
-        transition: none !important;
-        animation-duration: 0s !important;
-      }
-    `;
+    const spring = createSpring(TAB_CLOSE.spacerSpring);
+    spring.pos = fromH;
+    spring.target = 0;
 
-    await runAnimationLoop(TAB_CLOSE.spacerRemoveSafetyMs, ({ elapsed }) => {
+    await runAnimationLoop(TAB_CLOSE.spacerRemoveSafetyMs, ({ dt }) => {
       if (!spacer.isConnected) return false;
-      const rawP = clamp(elapsed / TAB_CLOSE.spacerCollapseDurationMs, 0, 1);
-      // easeInOutCubic: near-zero velocity at both ends, peak at midpoint.
-      // The collapse feels organic rather than snapping or dragging.
-      const h = fromH * (1 - easeInOutCubic(rawP));
+      spring.step(dt);
+      const h = Math.max(0, spring.pos);
+      // REVIEWED: explicit height animation, not left/top/margin
       spacer.style.height = `${h.toFixed(2)}px`;
-      return rawP < 1;
+      spacer.style.minHeight = `${h.toFixed(2)}px`;
+      return !spring.settled(TAB_CLOSE.settledPx);
     }).promise;
 
-    // Tear down suppressor before removing the spacer so that any
-    // transition Zen re-applies after this point is unaffected.
-    suppressStyle.remove();
-
     if (spacer.isConnected) {
-      // Height is already 0 here so removal causes no layout shift.
       spacer.remove();
     }
   }
@@ -345,11 +295,9 @@
     const H = rect.height;
 
     const spacer = document.createElement("div");
-    // No min-height — animating both height and min-height causes a double reflow
-    // per frame: min-height resists the collapsing height until height wins, producing
-    // a visible step-bounce. height alone is sufficient.
-    // The spacer is inserted in the atomic swap below — NOT here.
-    spacer.style.cssText = `width: ${W}px; height: ${H}px; box-sizing: content-box; flex-shrink: 0; pointer-events: none; visibility: hidden;`;
+    // REFACTOR: Use cssText for multiple sequential style assignments
+    spacer.style.cssText = `width: ${W}px; height: ${H}px; min-height: ${H}px; flex-shrink: 0; pointer-events: none; visibility: hidden;`;
+    tab.parentNode.insertBefore(spacer, tab.nextSibling);
 
     const ghostMask = document.createElement("div");
     ghostMask.classList.add("og-ghost-mask");
@@ -374,70 +322,47 @@
     mount.appendChild(ghostMask);
     mount.appendChild(mask);
 
-    // ── Atomic tab→spacer swap ────────────────────────────────────
-    // visibility:hidden (prior fix) kept the tab contributing H px of layout
-    // space. Inserting the spacer (also H px) meant the layout briefly had 2H.
-    // Firefox removes the actual tab element asynchronously — commonly one full
-    // frame later. At that paint, surrounding tabs snapped up by H: the bounce.
-    //
-    // display:none removes the tab from layout entirely (0 px contribution).
-    // Both mutations happen in the same synchronous block → the browser batches
-    // them into ONE reflow at the next paint: spacer (H) replaces tab (0) →
-    // net H. When Firefox later removes the display:none element it has no
-    // layout effect (it was already 0 px). Surrounding tabs never shift.
-    tab.style.transition = "none";
-    tab.style.setProperty("display", "none", "important");
-    tab.parentNode.insertBefore(spacer, tab);  // spacer occupies tab’s vacated slot
-
     const travel = -(W * TAB_CLOSE.travelFactor);
 
     await runAnimationLoop(TAB_CLOSE.safetyMs, ({ elapsed }) => {
       if (!mask.isConnected || !ghostMask.isConnected) return false;
 
       const rawP = clamp(elapsed / TAB_CLOSE.durationMs, 0, 1);
+      const antP = clamp(elapsed / TAB_CLOSE.antiMs, 0, 1);
+      const antX = Math.sin(antP * Math.PI) * TAB_CLOSE.antiPx;
 
-      // Slide: easeOutCubic — even distribution of motion across the full duration;
-      // easeOutExpo front-loads ~63% of travel into the first 20% of time,
-      // making the departure imperceptibly fast at any reasonable duration.
-      const tx = lerp(0, travel, easeOutCubic(rawP));
+      const exitP = clamp((elapsed - TAB_CLOSE.antiMs) / (TAB_CLOSE.durationMs - TAB_CLOSE.antiMs), 0, 1);
 
-      // Opacity: easeOutCubic — begins fading immediately once opacityStart is passed.
-      // easeInOutCubic had a slow-start that caused the tab to "hang" visibly
-      // opaque mid-slide before fading, breaking the sense of a unified exit.
+      const slideP = easeInExpo(exitP);
+      const tx = antX + lerp(0, travel, slideP);
+
       const opP = clamp((rawP - TAB_CLOSE.opacityStart) / TAB_CLOSE.opacitySpan, 0, 1);
-      const opacity = lerp(1, 0, easeOutCubic(opP));
+      const opacity = lerp(1, 0, easeInOutExpo(opP));
+      const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeInOutExpo(opP));
 
-      // Shine sweeps across during exit (plain div — transform works fine here)
       const shineP = clamp(elapsed / TAB_CLOSE.shineDurationMs, 0, 1);
       const shineX = lerp(TAB_CLOSE.shineStartX, TAB_CLOSE.shineEndX, easeOutExpo(shineP));
       const shineOp = shineP < 0.5
-        ? lerp(0, TAB_CLOSE.shinePeakOpacity, easeOutExpo(shineP / 0.5))
-        : lerp(TAB_CLOSE.shinePeakOpacity, 0, easeOutExpo((shineP - 0.5) / 0.5));
+        ? lerp(0, TAB_CLOSE.shinePeakOpacity, easeInOutExpo(shineP / 0.5))
+        : lerp(TAB_CLOSE.shinePeakOpacity, 0, easeInOutExpo((shineP - 0.5) / 0.5));
 
       const gElapsed = Math.max(0, elapsed - TAB_CLOSE.ghostDelayMs);
-      const gRawP = clamp(gElapsed / TAB_CLOSE.durationMs, 0, 1);
-      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeInOutCubic(gRawP));
-      const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeInCubic(gRawP));
-      // Blur builds from 0 → 2px as the ghost trails away.
-      // Starting at 0 means the ghost is a legible tab copy on frame 1;
-      // it progressively smears into a motion cue rather than opening as a glob.
-      const gBlur = lerp(0, 2, easeInCubic(gRawP));
+      const gExitP = clamp((gElapsed - TAB_CLOSE.antiMs) / (TAB_CLOSE.durationMs - TAB_CLOSE.antiMs), 0, 1);
+      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeInOutExpo(gExitP));
+      const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeOutExpo(
+        clamp((gElapsed / TAB_CLOSE.durationMs - TAB_CLOSE.ghostFadeOffset) / TAB_CLOSE.ghostFadeSpan, 0, 1)
+      ));
 
-      // GPU-composited slide via transform — does not trigger layout recalculation.
-      // `left` recalculated layout on every frame (main-thread bound, not composited).
-      // `will-change: transform` (set in CSS) correctly promotes these elements to
-      // compositor layers. The prior comment claiming transform is "silently ignored"
-      // applied only to XUL tab elements — our plain HTML og-mask divs support
-      // transform correctly (same pattern as the search-close clone animation).
-      mask.style.transform = `translateX(${tx.toFixed(2)}px)`;
-      mask.style.opacity = opacity.toFixed(3);
+      // ANIMATION: Replacing implicit left/top with transform:translate for GPU compositor where applicable
+      clone.style.transform = `translateX(${tx.toFixed(2)}px)`;
+      clone.style.opacity = opacity.toFixed(3);
+      clone.style.filter = `blur(${blurPx.toFixed(2)}px)`;
 
       shine.style.transform = `translateX(${shineX.toFixed(1)}%) skewX(${TAB_CLOSE.shineSkewDeg}deg)`;
       shine.style.opacity = shineOp.toFixed(3);
 
-      ghostMask.style.transform = `translateX(${gTx.toFixed(2)}px)`;
-      ghostMask.style.opacity = gOp.toFixed(3);
-      ghostClone.style.filter = `blur(${gBlur.toFixed(2)}px)`;
+      ghostClone.style.transform = `translateX(${gTx.toFixed(2)}px)`;
+      ghostClone.style.opacity = gOp.toFixed(3);
 
       return rawP < 1;
     }).promise;
@@ -445,13 +370,8 @@
     mask.remove();
     ghostMask.remove();
     if (spacer.isConnected) {
-      // Delay spacer collapse so the clone has already exited before the gap closes.
-      // Without this delay, the concurrent layout reflow shifts surrounding tabs
-      // mid-slide, which moves the stale rect.left reference and causes the
-      // visible upward "bounce" on the departing clone.
-      setTimeout(() => {
-        if (spacer.isConnected) collapseSpacer(spacer, H);
-      }, TAB_CLOSE.spacerCollapseDelayMs);
+      // Execute unawaited spacer collapse for staggered overlap
+      collapseSpacer(spacer, H);
     }
   }
 
@@ -524,7 +444,7 @@
       margin: 0 !important;
       pointer-events: none !important;
       z-index: 9999 !important;
-      transform-origin: bottom center !important;
+      transform-origin: top center !important;
       will-change: transform, opacity !important;
       overflow: hidden !important;
       border-radius: 10px !important;
@@ -548,10 +468,7 @@
 
       const rawP = clamp(elapsed / SEARCH_CLOSE.durationMs, 0, 1);
       const opP = clamp((rawP - SEARCH_CLOSE.opacityHoldStart) / SEARCH_CLOSE.opacityFadeSpan, 0, 1);
-      // easeOutCubic (was easeInCubic): begins fading immediately on frame 1 — close
-      // feels instant and responsive. easeInCubic delayed the fade onset, making the
-      // bar 'hang' at full opacity for the first third of the animation.
-      const opacity = lerp(1, 0, easeOutCubic(opP));
+      const opacity = lerp(1, 0, easeInOutExpo(opP));
 
       clone.style.transform = formatTranslateScale(ySpring.pos, sxSpring.pos, sySpring.pos);
       clone.style.opacity = opacity.toFixed(3);
