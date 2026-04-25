@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name           Animations
-// @version        1.6.7
+// @version        1.7.0
 // @author         vur
 // @description    JS
 // @compatibility  Firefox 100+
@@ -18,61 +18,69 @@
   };
 
   const TAB_CLOSE = {
-    durationMs: 560,         // 800→560: UI exits must feel instant, not theatrical
+    // Shortened: 800→540ms — still a graceful farewell, not a UI blocker
+    durationMs: 540,
     safetyMs: 1400,
-    antiMs: 100,             // 180→100: snappy haptic confirmation, not a bounce
-    antiPx: 7.0,             // 12→7: subtle press-acknowledgement, not a recoil
-    ghostDelayMs: 60,        // 90→60: tighter trail for visual cohesion
-    shineDurationMs: 500,    // proportionally scaled
-    opacityStart: 0.20,
-    opacitySpan: 0.80,
-    ghostTravelFactor: 0.72, // 0.85→0.72: more depth separation between main and ghost
-    blurMaxPx: 18.0,         // 32→18: GPU-safe; 32px causes compositor thrash
-    travelFactor: 1.35,
+    // antiMs/antiPx removed — sin-wave bump felt mechanical; clean easeOut is smoother
+    ghostDelayMs: 60,
+    shineDurationMs: 480,
+    // Opacity fades earlier so the slide is the hero, not the fade
+    opacityStart: 0.15,
+    opacitySpan: 0.85,
+    // Ghost slightly faster than main clone → natural depth separation
+    ghostTravelFactor: 0.78,
+    // 32px blur was expensive in Firefox & visually excessive; 14px is enough
+    blurMaxPx: 14.0,
+    travelFactor: 1.3,
     ghostOpacityStart: 0.55,
-    shinePeakOpacity: 0.80,
+    shinePeakOpacity: 0.72,
     shineSkewDeg: -28,
     shineStartX: -120,
     shineEndX: 220,
     settledPx: 0.05,
-    spacerSpring: { stiffness: 320, damping: 38 }, // faster collapse, zero wobble
-    ghostFadeOffset: 0.1,
-    ghostFadeSpan: 0.9,
+    // Softer spring: gap collapse feels organic rather than rigid
+    spacerSpring: { stiffness: 200, damping: 26 },
+    ghostFadeOffset: 0.08,
+    ghostFadeSpan: 0.92,
     spacerRemoveSafetyMs: 700,
   };
 
   const SEARCH_OPEN = {
-    fadeMs: 260,             // 350→260: opacity resolves quickly so element feels present
+    // 350→220ms — search bar is used frequently; snappier feels more responsive
+    fadeMs: 220,
     safetyMs: 1000,
-    startY: 22,              // 32→22: cinematic but not theatrical travel distance
-    startScaleX: 0.95,      // 0.94→0.95: barely-there scale start; real world physics
-    startScaleY: 0.90,      // 0.88→0.90: same; nothing appears from nothing
+    startY: 24,
+    startScaleX: 0.95,
+    startScaleY: 0.90,
     settleY: 0.01,
     settleScale: 0.0001,
   };
 
   const SEARCH_OPEN_SPRINGS = {
-    y: { stiffness: 480, damping: 40 }, // 420/34→480/40: faster arrival, zero overshoot
-    sx: { stiffness: 440, damping: 36 }, // 380/30→440/36
-    sy: { stiffness: 440, damping: 36 },
+    // Slightly looser damping for a smoother settle without overshoot
+    y: { stiffness: 380, damping: 32 },
+    sx: { stiffness: 340, damping: 28 },
+    sy: { stiffness: 340, damping: 28 },
   };
 
   const SEARCH_CLOSE = {
-    durationMs: 320,         // 450→320: dismiss must feel instant
+    // 450→320ms — exit should be faster than entrance (asymmetric timing)
+    durationMs: 320,
     safetyMs: 700,
-    targetY: 28,             // 36→28: proportionally scaled to tighter duration
+    targetY: 28,
     targetScaleX: 0.95,
     targetScaleY: 0.90,
     opacityHoldStart: 0.0,
-    opacityFadeSpan: 0.85,   // 1.0→0.85: fade completes before spring settles
+    opacityFadeSpan: 1.0,
     settleY: 0.02,
     settleScale: 0.0001,
   };
 
   const SEARCH_CLOSE_SPRINGS = {
-    y: { stiffness: 420, damping: 38 }, // 340/32→420/38: crisper exit
-    sy: { stiffness: 360, damping: 34 }, // 280/28→360/34
-    sx: { stiffness: 360, damping: 34 },
+    // Higher damping on close: graceful arc without mechanical snap-back
+    y: { stiffness: 300, damping: 34 },
+    sy: { stiffness: 260, damping: 30 },
+    sx: { stiffness: 260, damping: 30 },
   };
 
   const searchAnimationState = new WeakMap();
@@ -162,12 +170,9 @@
   }
 
   // ── Easings ─────────────────────────────────────────────────────
-  // Emil principle: ease-OUT for entering/exiting elements (immediate movement).
-  // ease-IN starts slow — the exact moment users are watching most closely.
-  // easeOutExpo used for all UI exit/enter slides.
-  // easeInOutExpo reserved for on-screen morphs (shine sweep, ghost fade).
-  const easeInExpo = t => t * t * t * t * t;  // ⚠ use sparingly — only for deliberate stagger
-  const easeOutExpo = t => 1 - Math.pow(1 - t, 5); // primary exit/enter curve
+  // Replaced harsh Expo curves with luxurious Quintic blends for fluidity
+  const easeInExpo = t => t * t * t * t * t;
+  const easeOutExpo = t => 1 - Math.pow(1 - t, 5);
   const easeInOutExpo = t => t < 0.5 ? 16 * t * t * t * t * t : 1 - Math.pow(-2 * t + 2, 5) / 2;
 
   const lerp = (a, b, t) => a + (b - a) * t;
@@ -331,36 +336,36 @@
       if (!mask.isConnected || !ghostMask.isConnected) return false;
 
       const rawP = clamp(elapsed / TAB_CLOSE.durationMs, 0, 1);
-      const antP = clamp(elapsed / TAB_CLOSE.antiMs, 0, 1);
-      const antX = Math.sin(antP * Math.PI) * TAB_CLOSE.antiPx;
 
-      const exitP = clamp((elapsed - TAB_CLOSE.antiMs) / (TAB_CLOSE.durationMs - TAB_CLOSE.antiMs), 0, 1);
+      // easeOutExpo: instant momentum at frame 0 → exponentially decelerates.
+      // Previously easeInExpo which delayed movement — worst possible for perceived speed.
+      const slideP = easeOutExpo(rawP);
+      const tx = lerp(0, travel, slideP);
 
-      // Emil: use ease-OUT for the exit slide — starts fast (immediate feedback)
-      // easeInExpo was starting slow, making dismiss feel sluggish at the critical first frame
-      const slideP = easeOutExpo(exitP);
-      const tx = antX + lerp(0, travel, slideP);
-
+      // Opacity fades over a wider window so the slide dominates visually
       const opP = clamp((rawP - TAB_CLOSE.opacityStart) / TAB_CLOSE.opacitySpan, 0, 1);
-      // Emil: opacity-out uses easeOutExpo so it fades quickly up front,
-      // giving an illusion of speed — same as a fast-spinning spinner reads as faster loading
-      const opacity = lerp(1, 0, easeOutExpo(opP));
+      const opacity = lerp(1, 0, easeInOutExpo(opP));
+
+      // Blur follows opacity (spatially tied, not time-tied) — cheaper & more intentional
       const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeOutExpo(opP));
 
+      // Shine sweeps quickly then fades — still reads as a glint without dominating
       const shineP = clamp(elapsed / TAB_CLOSE.shineDurationMs, 0, 1);
       const shineX = lerp(TAB_CLOSE.shineStartX, TAB_CLOSE.shineEndX, easeOutExpo(shineP));
       const shineOp = shineP < 0.5
         ? lerp(0, TAB_CLOSE.shinePeakOpacity, easeInOutExpo(shineP / 0.5))
         : lerp(TAB_CLOSE.shinePeakOpacity, 0, easeInOutExpo((shineP - 0.5) / 0.5));
 
+      // Ghost uses easeOutExpo too but travels less distance → trails behind naturally
+      // Different curve from main clone gives depth without any 3D tricks
       const gElapsed = Math.max(0, elapsed - TAB_CLOSE.ghostDelayMs);
-      const gExitP = clamp((gElapsed - TAB_CLOSE.antiMs) / (TAB_CLOSE.durationMs - TAB_CLOSE.antiMs), 0, 1);
-      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeInOutExpo(gExitP));
+      const gExitP = clamp(gElapsed / TAB_CLOSE.durationMs, 0, 1);
+      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeOutExpo(gExitP));
       const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeOutExpo(
         clamp((gElapsed / TAB_CLOSE.durationMs - TAB_CLOSE.ghostFadeOffset) / TAB_CLOSE.ghostFadeSpan, 0, 1)
       ));
 
-      // ANIMATION: Replacing implicit left/top with transform:translate for GPU compositor where applicable
+      // GPU compositor path: only transform + opacity + filter
       clone.style.transform = `translateX(${tx.toFixed(2)}px)`;
       clone.style.opacity = opacity.toFixed(3);
       clone.style.filter = `blur(${blurPx.toFixed(2)}px)`;
