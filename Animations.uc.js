@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name           Animations
-// @version        1.6.6
+// @version        1.6.7
 // @author         vur
 // @description    JS
 // @compatibility  Firefox 100+
@@ -52,7 +52,7 @@
   };
 
   const SEARCH_OPEN_SPRINGS = {
-    y:  { stiffness: 480, damping: 40 }, // 420/34→480/40: faster arrival, zero overshoot
+    y: { stiffness: 480, damping: 40 }, // 420/34→480/40: faster arrival, zero overshoot
     sx: { stiffness: 440, damping: 36 }, // 380/30→440/36
     sy: { stiffness: 440, damping: 36 },
   };
@@ -70,7 +70,7 @@
   };
 
   const SEARCH_CLOSE_SPRINGS = {
-    y:  { stiffness: 420, damping: 38 }, // 340/32→420/38: crisper exit
+    y: { stiffness: 420, damping: 38 }, // 340/32→420/38: crisper exit
     sy: { stiffness: 360, damping: 34 }, // 280/28→360/34
     sx: { stiffness: 360, damping: 34 },
   };
@@ -166,8 +166,8 @@
   // ease-IN starts slow — the exact moment users are watching most closely.
   // easeOutExpo used for all UI exit/enter slides.
   // easeInOutExpo reserved for on-screen morphs (shine sweep, ghost fade).
-  const easeInExpo    = t => t * t * t * t * t;  // ⚠ use sparingly — only for deliberate stagger
-  const easeOutExpo   = t => 1 - Math.pow(1 - t, 5); // primary exit/enter curve
+  const easeInExpo = t => t * t * t * t * t;  // ⚠ use sparingly — only for deliberate stagger
+  const easeOutExpo = t => 1 - Math.pow(1 - t, 5); // primary exit/enter curve
   const easeInOutExpo = t => t < 0.5 ? 16 * t * t * t * t * t : 1 - Math.pow(-2 * t + 2, 5) / 2;
 
   const lerp = (a, b, t) => a + (b - a) * t;
@@ -345,7 +345,7 @@
       // Emil: opacity-out uses easeOutExpo so it fades quickly up front,
       // giving an illusion of speed — same as a fast-spinning spinner reads as faster loading
       const opacity = lerp(1, 0, easeOutExpo(opP));
-      const blurPx  = lerp(0, TAB_CLOSE.blurMaxPx, easeOutExpo(opP));
+      const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeOutExpo(opP));
 
       const shineP = clamp(elapsed / TAB_CLOSE.shineDurationMs, 0, 1);
       const shineX = lerp(TAB_CLOSE.shineStartX, TAB_CLOSE.shineEndX, easeOutExpo(shineP));
