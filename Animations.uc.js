@@ -18,61 +18,61 @@
   };
 
   const TAB_CLOSE = {
-    durationMs: 800,
-    safetyMs: 1800,
-    antiMs: 180,
-    antiPx: 12.0,
-    ghostDelayMs: 90,
-    shineDurationMs: 650,
-    opacityStart: 0.25,
-    opacitySpan: 0.75,
-    ghostTravelFactor: 0.85,
-    blurMaxPx: 32.0,
+    durationMs: 560,         // 800→560: UI exits must feel instant, not theatrical
+    safetyMs: 1400,
+    antiMs: 100,             // 180→100: snappy haptic confirmation, not a bounce
+    antiPx: 7.0,             // 12→7: subtle press-acknowledgement, not a recoil
+    ghostDelayMs: 60,        // 90→60: tighter trail for visual cohesion
+    shineDurationMs: 500,    // proportionally scaled
+    opacityStart: 0.20,
+    opacitySpan: 0.80,
+    ghostTravelFactor: 0.72, // 0.85→0.72: more depth separation between main and ghost
+    blurMaxPx: 18.0,         // 32→18: GPU-safe; 32px causes compositor thrash
     travelFactor: 1.35,
-    ghostOpacityStart: 0.6,
-    shinePeakOpacity: 0.85,
+    ghostOpacityStart: 0.55,
+    shinePeakOpacity: 0.80,
     shineSkewDeg: -28,
     shineStartX: -120,
     shineEndX: 220,
     settledPx: 0.05,
-    spacerSpring: { stiffness: 280, damping: 32 },
+    spacerSpring: { stiffness: 320, damping: 38 }, // faster collapse, zero wobble
     ghostFadeOffset: 0.1,
     ghostFadeSpan: 0.9,
-    spacerRemoveSafetyMs: 800,
+    spacerRemoveSafetyMs: 700,
   };
 
   const SEARCH_OPEN = {
-    fadeMs: 350,
-    safetyMs: 1200,
-    startY: 32,
-    startScaleX: 0.94,
-    startScaleY: 0.88,
+    fadeMs: 260,             // 350→260: opacity resolves quickly so element feels present
+    safetyMs: 1000,
+    startY: 22,              // 32→22: cinematic but not theatrical travel distance
+    startScaleX: 0.95,      // 0.94→0.95: barely-there scale start; real world physics
+    startScaleY: 0.90,      // 0.88→0.90: same; nothing appears from nothing
     settleY: 0.01,
     settleScale: 0.0001,
   };
 
   const SEARCH_OPEN_SPRINGS = {
-    y: { stiffness: 420, damping: 34 },
-    sx: { stiffness: 380, damping: 30 },
-    sy: { stiffness: 380, damping: 30 },
+    y:  { stiffness: 480, damping: 40 }, // 420/34→480/40: faster arrival, zero overshoot
+    sx: { stiffness: 440, damping: 36 }, // 380/30→440/36
+    sy: { stiffness: 440, damping: 36 },
   };
 
   const SEARCH_CLOSE = {
-    durationMs: 450,
-    safetyMs: 800,
-    targetY: 36,
-    targetScaleX: 0.94,
-    targetScaleY: 0.88,
+    durationMs: 320,         // 450→320: dismiss must feel instant
+    safetyMs: 700,
+    targetY: 28,             // 36→28: proportionally scaled to tighter duration
+    targetScaleX: 0.95,
+    targetScaleY: 0.90,
     opacityHoldStart: 0.0,
-    opacityFadeSpan: 1.0,
+    opacityFadeSpan: 0.85,   // 1.0→0.85: fade completes before spring settles
     settleY: 0.02,
     settleScale: 0.0001,
   };
 
   const SEARCH_CLOSE_SPRINGS = {
-    y: { stiffness: 340, damping: 32 },
-    sy: { stiffness: 280, damping: 28 },
-    sx: { stiffness: 280, damping: 28 },
+    y:  { stiffness: 420, damping: 38 }, // 340/32→420/38: crisper exit
+    sy: { stiffness: 360, damping: 34 }, // 280/28→360/34
+    sx: { stiffness: 360, damping: 34 },
   };
 
   const searchAnimationState = new WeakMap();
@@ -162,9 +162,12 @@
   }
 
   // ── Easings ─────────────────────────────────────────────────────
-  // Replaced harsh Expo curves with luxurious Quintic blends for fluidity
-  const easeInExpo = t => t * t * t * t * t;
-  const easeOutExpo = t => 1 - Math.pow(1 - t, 5);
+  // Emil principle: ease-OUT for entering/exiting elements (immediate movement).
+  // ease-IN starts slow — the exact moment users are watching most closely.
+  // easeOutExpo used for all UI exit/enter slides.
+  // easeInOutExpo reserved for on-screen morphs (shine sweep, ghost fade).
+  const easeInExpo    = t => t * t * t * t * t;  // ⚠ use sparingly — only for deliberate stagger
+  const easeOutExpo   = t => 1 - Math.pow(1 - t, 5); // primary exit/enter curve
   const easeInOutExpo = t => t < 0.5 ? 16 * t * t * t * t * t : 1 - Math.pow(-2 * t + 2, 5) / 2;
 
   const lerp = (a, b, t) => a + (b - a) * t;
@@ -333,12 +336,16 @@
 
       const exitP = clamp((elapsed - TAB_CLOSE.antiMs) / (TAB_CLOSE.durationMs - TAB_CLOSE.antiMs), 0, 1);
 
-      const slideP = easeInExpo(exitP);
+      // Emil: use ease-OUT for the exit slide — starts fast (immediate feedback)
+      // easeInExpo was starting slow, making dismiss feel sluggish at the critical first frame
+      const slideP = easeOutExpo(exitP);
       const tx = antX + lerp(0, travel, slideP);
 
       const opP = clamp((rawP - TAB_CLOSE.opacityStart) / TAB_CLOSE.opacitySpan, 0, 1);
-      const opacity = lerp(1, 0, easeInOutExpo(opP));
-      const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeInOutExpo(opP));
+      // Emil: opacity-out uses easeOutExpo so it fades quickly up front,
+      // giving an illusion of speed — same as a fast-spinning spinner reads as faster loading
+      const opacity = lerp(1, 0, easeOutExpo(opP));
+      const blurPx  = lerp(0, TAB_CLOSE.blurMaxPx, easeOutExpo(opP));
 
       const shineP = clamp(elapsed / TAB_CLOSE.shineDurationMs, 0, 1);
       const shineX = lerp(TAB_CLOSE.shineStartX, TAB_CLOSE.shineEndX, easeOutExpo(shineP));
