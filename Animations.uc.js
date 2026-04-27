@@ -18,26 +18,26 @@
   };
 
   const TAB_CLOSE = {
-    durationMs: 960,          // longer = more luxurious slide
-    safetyMs: 2200,
-    antiMs: 100,              // shorter anticipation = less choppy
-    antiPx: 5.0,              // halved amplitude = barely-there nudge
-    ghostDelayMs: 60,         // ghost follows main clone more closely
-    shineDurationMs: 750,
-    opacityStart: 0.15,       // opacity fade starts earlier for smoothness
-    opacitySpan: 0.85,
-    ghostTravelFactor: 0.78,
-    blurMaxPx: 18.0,          // softer blur = less visual noise
-    travelFactor: 1.25,       // slightly less travel = calmer exit
-    ghostOpacityStart: 0.45,
-    shinePeakOpacity: 0.7,
+    durationMs: 700,          // tighter total — exits should feel responsive, not luxurious
+    safetyMs: 2000,
+    antiMs: 50,               // minimal anticipation — just enough to feel intentional
+    antiPx: 3.0,              // very subtle nudge, not a visible bounce
+    ghostDelayMs: 45,         // ghost trails closely behind the main clone
+    shineDurationMs: 600,
+    opacityStart: 0.30,       // hold opacity longer — let the slide read first
+    opacitySpan: 0.70,
+    ghostTravelFactor: 0.72,
+    blurMaxPx: 14.0,          // softer blur — speed blur, not fog
+    travelFactor: 1.20,       // clean exit distance, not too dramatic
+    ghostOpacityStart: 0.38,
+    shinePeakOpacity: 0.65,
     shineSkewDeg: -28,
     shineStartX: -120,
     shineEndX: 220,
     settledPx: 0.05,
-    spacerSpring: { stiffness: 180, damping: 28 }, // softer = silkier collapse
-    ghostFadeOffset: 0.08,
-    ghostFadeSpan: 0.92,
+    spacerSpring: { stiffness: 200, damping: 30 }, // slightly snappier collapse
+    ghostFadeOffset: 0.10,
+    ghostFadeSpan: 0.90,
     spacerRemoveSafetyMs: 1000,
   };
 
@@ -162,11 +162,12 @@
   }
 
   // ── Easings ─────────────────────────────────────────────────────
-  // easeInCubic: gentle acceleration (t³) — replaces harsh t⁵ for the tab slide
-  const easeInExpo = t => t * t * t;
-  // easeOutQuart: fast deceleration with a smooth landing (1-(1-t)⁴)
+  // easeOutQuint: very fast start, smooth landing — ideal for exit slides
+  // Exits must feel instant at frame 0 (user is watching most closely then)
+  const easeInExpo = t => 1 - Math.pow(1 - t, 5);
+  // easeOutQuart: strong deceleration with a smooth landing (1-(1-t)⁴)
   const easeOutExpo = t => 1 - Math.pow(1 - t, 4);
-  // easeInOutQuart: symmetrical, fluid, non-abrupt — used for opacity & blur
+  // easeInOutQuart: symmetrical — used for opacity & blur crossfades
   const easeInOutExpo = t => t < 0.5 ? 8 * t * t * t * t : 1 - Math.pow(-2 * t + 2, 4) / 2;
 
   const lerp = (a, b, t) => a + (b - a) * t;
@@ -350,7 +351,8 @@
 
       const gElapsed = Math.max(0, elapsed - TAB_CLOSE.ghostDelayMs);
       const gExitP = clamp((gElapsed - TAB_CLOSE.antiMs) / (TAB_CLOSE.durationMs - TAB_CLOSE.antiMs), 0, 1);
-      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeInOutExpo(gExitP));
+      // Ghost uses easeOutExpo (fast-start) so it trails naturally — not symmetric easeInOut
+      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeOutExpo(gExitP));
       const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeOutExpo(
         clamp((gElapsed / TAB_CLOSE.durationMs - TAB_CLOSE.ghostFadeOffset) / TAB_CLOSE.ghostFadeSpan, 0, 1)
       ));
