@@ -18,29 +18,25 @@
   };
 
   const TAB_CLOSE = {
+    durationMs: 820,          // total slide duration in ms
     safetyMs: 2200,
-    // Spring that drives the main clone's X translation — high stiffness
-    // launches it fast, moderate damping lets momentum carry it out smoothly.
-    // No easing math needed; the spring IS the easing.
-    slideSpring: { stiffness: 420, damping: 34 },
-    ghostDelayMs: 80,         // ghost lags just enough to read as a shadow
-    shineDurationMs: 650,
-    // Opacity front-loaded: tab starts dissolving immediately so the
-    // exit reads as one cohesive motion, not "slide then fade".
-    opacityStart: 0.0,
-    opacitySpan: 0.72,
-    ghostTravelFactor: 0.72,
-    blurMaxPx: 14.0,
-    travelFactor: 1.3,
-    ghostOpacityStart: 0.38,
+    antiMs: 80,               // brief anticipation nudge before launch
+    antiPx: 4.0,
+    ghostDelayMs: 60,
+    shineDurationMs: 680,
+    opacityStart: 0.1,        // fraction of durationMs before fade starts
+    opacitySpan: 0.9,
+    ghostTravelFactor: 0.75,
+    blurMaxPx: 16.0,
+    travelFactor: 1.25,
+    ghostOpacityStart: 0.4,
     shinePeakOpacity: 0.65,
     shineSkewDeg: -28,
     shineStartX: -120,
     shineEndX: 220,
-    settledPx: 0.5,           // spring settles when within 0.5px — avoids micro-jitter
     spacerSpring: { stiffness: 180, damping: 28 },
-    ghostFadeOffset: 0.0,
-    ghostFadeSpan: 0.85,
+    ghostFadeOffset: 0.06,
+    ghostFadeSpan: 0.94,
     spacerRemoveSafetyMs: 1000,
   };
 
@@ -329,37 +325,26 @@
 
     const travel = -(W * TAB_CLOSE.travelFactor);
 
-    // Spring-driven translate: launches with momentum, decelerates organically.
-    // Target is set beyond the tab width so the spring overshoots into offscreen
-    // territory — the deceleration curve IS the easing, no math lookup needed.
-    const slideSpring = createSpring(TAB_CLOSE.slideSpring);
-    slideSpring.pos = 0;
-    slideSpring.target = travel;
-
-    // Ghost spring: identical params but starts late, giving it a trailing feel.
-    const ghostSpring = createSpring(TAB_CLOSE.slideSpring);
-    ghostSpring.pos = 0;
-    ghostSpring.target = travel * TAB_CLOSE.ghostTravelFactor;
-
-    // Track total elapsed for opacity/shine — independent of spring settlement.
-    let totalElapsed = 0;
-
-    await runAnimationLoop(TAB_CLOSE.safetyMs, ({ elapsed, dt }) => {
+    await runAnimationLoop(TAB_CLOSE.safetyMs, ({ elapsed }) => {
       if (!mask.isConnected || !ghostMask.isConnected) return false;
 
-      totalElapsed = elapsed;
+      const rawP = clamp(elapsed / TAB_CLOSE.durationMs, 0, 1);
 
-      // ── Main clone: spring translate ──────────────────────────────
-      slideSpring.step(dt);
-      const tx = slideSpring.pos;
+      // ── Anticipation nudge (tiny rightward bump before launch) ────
+      const antP = clamp(elapsed / TAB_CLOSE.antiMs, 0, 1);
+      const antX = Math.sin(antP * Math.PI) * TAB_CLOSE.antiPx;
 
-      // Opacity: easeInExpo so fade begins immediately and tracks the launch.
-      // The tab should feel like it dissolves-while-flying, not fly-then-fade.
-      const opRaw = clamp((elapsed / 1000 - TAB_CLOSE.opacityStart) / TAB_CLOSE.opacitySpan, 0, 1);
-      // Use easeOutExpo inverted: fast drop at start, lingers near zero.
-      const opacity = lerp(1, 0, easeInExpo(opRaw));
-      // Blur mirrors opacity — arrives together so the dissolve reads as one.
-      const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeInExpo(opRaw));
+      // ── Main slide: easeInOutQuart ────────────────────────────────
+      // Smooth ramp-up (no instant jerk) then decisive acceleration
+      // into the exit. Feels fluid vs the old t³ which read mechanical.
+      const exitP = clamp((elapsed - TAB_CLOSE.antiMs) / (TAB_CLOSE.durationMs - TAB_CLOSE.antiMs), 0, 1);
+      const slideP = easeInOutExpo(exitP);  // quart-style: 8t⁴ / (1-(−2t+2)⁴/2)
+      const tx = antX + lerp(0, travel, slideP);
+
+      // ── Opacity / blur ────────────────────────────────────────────
+      const opP = clamp((rawP - TAB_CLOSE.opacityStart) / TAB_CLOSE.opacitySpan, 0, 1);
+      const opacity = lerp(1, 0, easeInOutExpo(opP));
+      const blurPx = lerp(0, TAB_CLOSE.blurMaxPx, easeInOutExpo(opP));
 
       // ── Shine sweep ───────────────────────────────────────────────
       const shineP = clamp(elapsed / TAB_CLOSE.shineDurationMs, 0, 1);
@@ -368,12 +353,12 @@
         ? lerp(0, TAB_CLOSE.shinePeakOpacity, easeInOutExpo(shineP / 0.5))
         : lerp(TAB_CLOSE.shinePeakOpacity, 0, easeInOutExpo((shineP - 0.5) / 0.5));
 
-      // ── Ghost clone: delayed spring ───────────────────────────────
+      // ── Ghost clone ───────────────────────────────────────────────
       const gElapsed = Math.max(0, elapsed - TAB_CLOSE.ghostDelayMs);
-      if (gElapsed > 0) ghostSpring.step(dt);
-      const gTx = ghostSpring.pos;
+      const gExitP = clamp((gElapsed - TAB_CLOSE.antiMs) / (TAB_CLOSE.durationMs - TAB_CLOSE.antiMs), 0, 1);
+      const gTx = lerp(0, travel * TAB_CLOSE.ghostTravelFactor, easeInOutExpo(gExitP));
       const gOp = lerp(TAB_CLOSE.ghostOpacityStart, 0, easeOutExpo(
-        clamp((gElapsed / 1000 - TAB_CLOSE.ghostFadeOffset) / TAB_CLOSE.ghostFadeSpan, 0, 1)
+        clamp((gElapsed / TAB_CLOSE.durationMs - TAB_CLOSE.ghostFadeOffset) / TAB_CLOSE.ghostFadeSpan, 0, 1)
       ));
 
       clone.style.transform = `translateX(${tx.toFixed(2)}px)`;
@@ -386,8 +371,7 @@
       ghostClone.style.transform = `translateX(${gTx.toFixed(2)}px)`;
       ghostClone.style.opacity = gOp.toFixed(3);
 
-      // Done when both springs have settled past the tab edge and opacity is gone.
-      return !(slideSpring.settled(TAB_CLOSE.settledPx) && opacity < 0.02);
+      return rawP < 1;
     }).promise;
 
     mask.remove();
